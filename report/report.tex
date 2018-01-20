@@ -1,0 +1,94 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% LaTeX book template                           %%
+%% Author:  Amber Jain (http://amberj.devio.us/) %%
+%% License: ISC license                          %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[a4paper,11pt]{article}
+\bibliographystyle{plain}
+\usepackage[margin=1.2in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{paracol}
+\usepackage{lmodern}
+\usepackage{amsfonts}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage{microtype} 
+\usepackage[justification=centering]{caption}  % centers captions automatically
+%\usepackage{caption2}
+\usepackage{subcaption}
+
+\usepackage{titlesec}
+\renewcommand{\thesection}{}% Remove section references...
+\renewcommand{\thesubsection}{\arabic{subsection}}%... from subsections
+
+\usepackage[version=3]{mhchem}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{bm}
+\usepackage[normalem]{ulem}
+\usepackage{cancel}
+\usepackage{relsize}
+\usepackage{enumitem}
+\usepackage{pgfpages}
+\usepackage{floatrow}  % centers images automatically
+\usepackage[longnamesfirst, authoryear]{natbib} 
+
+\bibliographystyle{plainnat}
+
+\definecolor{ForestGreen}{rgb}{0.13, 0.55, 0.13}
+
+
+\newcommand\norm[1]{\left\lVert#1\right\rVert}
+\newcommand\red[1]{\textcolor{red}{\textbf{#1}}}
+\newcommand\blue[1]{\textcolor{blue}{\textbf{#1}}}
+\newcommand\yellow[1]{\textcolor{yellow}{\textbf{#1}}}
+\newcommand\green[1]{\textcolor{ForestGreen}{\textbf{#1}}}
+\newcommand\ds[1]{\displaystyle{#1}}
+\renewcommand\b[1]{\textbf{#1}}
+\DeclarePairedDelimiterX{\ip}[2]{\langle}{\rangle}{#1, #2}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+
+\setcounter{tocdepth}{3}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2ex plus 0.5ex minus 0.2ex}
+
+\captionsetup[figure]{font=small,labelfont=small}
+\setlength{\belowcaptionskip}{-5pt}
+\setlist[itemize]{noitemsep, topsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=2pt}
+\setlength\parindent{0pt}
+
+
+
+% Author
+\author{\textsc{Y. Fan, M. Andriushchenko}}
+
+
+\begin{document}
+\section{Exercise 5: Fan Yue (2564216) and Maksym Andriushchenko (2565540)}
+\red{\textbf{Small warning}: We did not use the Virtual Machine and installed all the packages from scratch! We had to modify 2 lines of code: 
+	\begin{enumerate}
+		\item np.zeros((360*k+1, 2)) -> np.zeros((int(360*k)+1, 2))
+		\item axarr[0].get\_axes().set\_aspect(1) -> axarr[0].axes.set\_aspect(1).
+	\end{enumerate}
+}
+
+
+\section{1 Aligning points in 2D with Procrustes}
+\textbf{Question}: \textit{Find the optimal alignment between two ellipses. Debug until you achieve a good result!}
+
+It is already optimal. We only added scaling by multiplying point cloud by a scalar, which lead to the same scaling across all coordinates.
+
+test test
+
+
+\end{document}
+
+

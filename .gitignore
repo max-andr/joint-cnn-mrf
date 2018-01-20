@@ -1,5 +1,9 @@
 *~
 *.pyc
+*.aux
+*.log
+*.out
+*.synctex.gz
 
 .idea/
 FLIC/
