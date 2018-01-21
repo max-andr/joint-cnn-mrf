@@ -1,39 +1,45 @@
 import numpy as np
+import os
 import tensorflow as tf
 import time
+
+import augmentation
 import data
+import evaluation
 from datetime import datetime
 
 np.set_printoptions(suppress=True, precision=4)
 
 
-def model(x1, x2):
+def model(x1, x2, n_joints, debug=False):
     """
     A computational graph for CNN part.
-    :param x1: full resolution image (320x260)
-    :param x2: half resolution image
-    :return: predicted heat map 80x60
+    :param x1: full resolution image batch_size x 360 x 240 x 3
+    :param x2: half resolution image batch_size x 180 x 120 x 3
+    :return: predicted heat map batch_size x 90 x 60 x n_joints
     """
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 128, 128, 128, 512, 256
+    if debug:
+        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = n_filters1/8, n_filters2/8, n_filters3/8, n_filters4/8, n_filters5/8
 
-    # TODO: n_joints handle properly
-    # TODO: dimensions don't match. Do they use conv with 'SAME' sometimes?
-    # TODO: local contrast normalization here.
-    # TODO: create the second branch with x2
-    # TODO: maybe 3x3 pooling with stride=2 is better
+    x1 = conv_layer(x1, 5, 1, 3, n_filters1, 'conv1_fullres')  # result: 360x240
+    x1 = max_pool_layer(x1, 2, 2)  # result: 180x120
+    x1 = conv_layer(x1, 5, 1, n_filters1, n_filters2, 'conv2_fullres')  # result: 180x120
+    x1 = max_pool_layer(x1, 2, 2)  # result: 180x60
+    x1 = conv_layer(x1, 5, 1, n_filters2, n_filters3, 'conv3_fullres')  # result: 90x60
+    x1 = conv_layer(x1, 9, 1, n_filters3, n_filters4, 'conv4_fullres')  # result: 90x60
 
-    x1 = conv_layer(x1, 5, 1, 3, n_filters1, 'conv1')  # result: 316x256
-    x1 = max_pool_layer(x1, 2, 2)  # result: 158x128
+    x2 = conv_layer(x2, 5, 1, 3, n_filters1, 'conv1_halfres')  # result: 360x240
+    x2 = max_pool_layer(x2, 2, 2)  # result: 180x120
+    x2 = conv_layer(x2, 5, 1, n_filters1, n_filters2, 'conv2_halfres')  # result: 180x120
+    x2 = max_pool_layer(x2, 2, 2)  # result: 180x60
+    x2 = conv_layer(x2, 5, 1, n_filters2, n_filters3, 'conv3_halfres')  # result: 90x60
+    x2 = conv_layer(x2, 9, 1, n_filters3, n_filters4, 'conv4_halfres')  # result: 90x60
 
-    x1 = conv_layer(x1, 5, 1, n_filters1, n_filters2, 'conv2')  # result: 154x124
-    x1 = max_pool_layer(x1, 2, 2)  # result: 77x64
+    x = x1 + tf.image.resize_images(x2, [2*x2.shape[1], 2*x2.shape[2]])
 
-    x1 = conv_layer(x1, 5, 1, n_filters2, n_filters3, 'conv3')  # result: 73x60
-
-    x1 = conv_layer(x1, 9, 1, n_filters3, n_filters4, 'conv3')  # result: 65x52
-    x1 = conv_layer(x1, 1, 1, n_filters4, n_filters5, 'conv3')  # result: 65x52
-    heat_map_pred = conv_layer(x1, 1, 1, n_filters5, n_joints, 'conv3')  # result: 65x52
+    heat_map_pred = conv_layer(x, 9, 1, n_filters4, n_filters5, 'conv5')  # result: 90x60
 
     return heat_map_pred
 
@@ -124,21 +130,8 @@ def mean_squared_error(hm1, hm2):
     return tf.reduce_sum((hm1 - hm2)**2, axis=[1, 2, 3]) / hm1.shape[3]  # we divide over number of joints
 
 
-def detection_rate(heat_map_pred, heat_map_target, normalized_radius=10):
-    """
-    For a given pixel radius normalized by the torso height of each sample, we count the number of images in
-    the test set for which the distance between predicted position and ground truth is less than this radius.
-    It was intoduced in [MODEC: Multimodal Decomposable Models for Human Pose Estimation]
-    (https://homes.cs.washington.edu/~taskar/pubs/modec_cvpr13.pdf).
-
-    heat_map_pred: tensor of size [n_images, height, width, n_joints]
-    heat_map_target: tensor of size [n_images, height, width, n_joints]
-    normalized_radius: pixel radius normalized by the torso height of each sample
-    """
-    # TODO: may be complicated, we need to know the torso height for each sample here (not only heat maps)
-    pass
-
-
+debug = True
+model_path = 'models_ex'
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
 tb_folder = 'tb_ex10'
@@ -147,25 +140,38 @@ tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 
-n_joints = 4  # TODO: how many?
+n_joints = 11
 x_train, y_train, x_test, y_test = data.get_dataset('flic')
-in_height, in_width, n_colors = x_train.shape[1:3]
-hm_height, hm_width = y_train.shape[1:2]
-n_train_subset = 50  # for debugging purposes
-
+n_train, in_height, in_width, n_colors = x_train.shape[0:4]
+n_test, hm_height, hm_width = y_test.shape[0:3]
+if debug:
+    n_train, n_test = 200, 50  # for debugging purposes we take only a small subset
+    x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
 # Main hyperparameters
 n_epochs = 10
 batch_size = 1
 lmbd = 0.0
 lr = 0.05
+n_updates_total = n_epochs * n_train // batch_size
+lr_decay_n_updates = [round(0.66*n_updates_total), round(0.8*n_updates_total), round(0.9*n_updates_total)]
+lr_decay_coefs = [lr, lr/2, lr/5, lr/10]
 
 with tf.device('/gpu:0'):
-    x1 = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
-    x2 = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_halfres')
-    heat_map_target = tf.placeholder(tf.int64, [None, hm_height, hm_width, n_joints], name='heat_map')
-    lr_tf = tf.placeholder(tf.float32)
+    x1_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
+    hm_target_in = tf.placeholder(tf.int64, [None, hm_height, hm_width, n_joints], name='heat_map')
+    flag_train = tf.placeholder(tf.bool, name='is_training')
 
-    heat_map_pred = model(x1, x2)
+    n_iters_tf = tf.Variable(0, trainable=False)
+
+    lr_tf = tf.train.piecewise_constant(n_iters_tf, lr_decay_n_updates, lr_decay_coefs)
+
+    # Data augmentation: we apply the same random transformations both to images and heat maps
+    x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x1_in, hm_target_in), lambda: (x1_in, hm_target_in))
+    x2 = tf.image.resize_images(x1, [x1.shape[1]//2, x1.shape[2]//2])
+
+    # The whole heat map prediction model is here
+    heat_map_pred = model(x1, x2, n_joints, debug)
+    heat_map_pred = mrf(heat_map_pred)
 
     with tf.name_scope('loss'):
         mse = mean_squared_error(heat_map_pred, heat_map_target)
@@ -175,10 +181,10 @@ with tf.device('/gpu:0'):
         # opt = tf.train.AdamOptimizer(lr)
         opt = tf.train.MomentumOptimizer(learning_rate=lr_tf, momentum=0.9)
         grads_vars = opt.compute_gradients(loss)
-        train_step = opt.apply_gradients(grads_vars)
+        train_step = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
 
     with tf.name_scope('evaluation'):
-        det_rate_10 = detection_rate(heat_map_pred, heat_map_target, normalized_radius=10)
+        det_rate_10 = evaluation.detection_rate(heat_map_pred, heat_map_target, normalized_radius=10)
 
     with tf.name_scope('summaries'):
         tf.summary.scalar('loss', loss)
@@ -193,13 +199,15 @@ with tf.device('/gpu:0'):
         for var in tf.trainable_variables():
             tf.summary.histogram(var.op.name, var)
 
-    tf.summary.image('input', x, 30)
+    tf.summary.image('input', x1, 30)
     tf.summary.image('heat_map_pred', heat_map_pred, 30)
 
     tb_merged = tf.summary.merge_all()
     train_iters_writer = tf.summary.FileWriter(tb_train_iter)
     train_writer = tf.summary.FileWriter(tb_train)
     test_writer = tf.summary.FileWriter(tb_test)
+
+    saver = tf.train.Saver()
 
 gpu_options = tf.GPUOptions(visible_device_list='6', per_process_gpu_memory_fraction=0.3)
 config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
@@ -234,30 +242,36 @@ with tf.Session(config=config) as sess:
         # Note, we evaluate the training error only on 1000 examples batch due to limited computational power
         train_err = eval_error(x_train[:n_train_subset], y_train[:n_train_subset], sess, batch_size)
         print('Epoch: {:d}  test err: {:.3f}%  train err: {:.3f}%'.format(epoch, test_err * 100, train_err * 100))
+
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    saver.save(sess, model_path + '/' + cur_timestamp)  # save TF model for future real robustness test
+
     train_writer.close()
     test_writer.close()
     train_iters_writer.close()
 print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 
+# TODO: preprocess images /255, preprocess heat maps / 256.
 
-# TODO: read dataset, prepare 90x60 target heat-maps (small gaussian with std=1.5 pixels wrt output space 90x60)
+# TODO: Eval, TB, batches, clean up
 
-# TODO: set up a CNN: start from Fig.2.
+# TODO: debug
 
-# TODO: data augmentation during training as described in the paper:
-# rotation [-20 .. 20], scale [0.5, 1.5], horiz. flip 0.5.
+# TODO: get first results with part-detector only and paste them into the report
 
-# TODO: set up evaluation
+# TODO: set up PGM part.
+# TODO: Apply special initalization to the conv weights of PGM part, based on the histogram of joint displacements!
 
-# TODO: save the model!!! and set up the option to continue training
 
-# TODO: get first results and paste them into the report
-
-# TODO: set up PGM part. How to implement large 128x128 convolutions efficiently? FFT in TF?
-# Apply special initalization to the conv weights of PGM part, based on the histogram of joint displacements!
-
-# TODO: CNN from Fig.4
+# Things that are not super important
+# TODO: data: handle multiple people by incorporating an extra "torso-joint heatmap" (page 6)
+# TODO: set up the option to continue training (since we should do it in 3 stages according to the paper)
+# TODO: local contrast normalization: http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf and
+# https://github.com/bowenbaker/metaqnn/blob/master/libs/input_modules/preprocessing.py
 # TODO: Data Augm.: try zero padding and random crops!
+# TODO: maybe 3x3 pooling with stride=2 is better
+# TODO: maybe add 1x1 conv layer in the end?
 # TODO: spatial dropout
 # TODO: advanced pgm on small video clips from movies: http://bensapp.github.io/videopose-dataset.html
 
