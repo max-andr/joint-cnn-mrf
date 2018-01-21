@@ -4,13 +4,15 @@ import time
 import tensorpack.dataflow.dataset as dataset
 from datetime import datetime
 
+np.set_printoptions(suppress=True, precision=4)
+
 
 def model(x1, x2):
     """
     A computational graph for CNN part.
     :param x1: full resolution image (320x260)
     :param x2: half resolution image
-    :return: predicted heat map
+    :return: predicted heat map 80x60
     """
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 128, 128, 128, 512, 256
@@ -25,7 +27,7 @@ def model(x1, x2):
     x1 = max_pool_layer(x1, 2, 2)  # result: 158x128
 
     x1 = conv_layer(x1, 5, 1, n_filters1, n_filters2, 'conv2')  # result: 154x124
-    x1 = max_pool_layer(x1, 3, 2)  # result: 77x64
+    x1 = max_pool_layer(x1, 2, 2)  # result: 77x64
 
     x1 = conv_layer(x1, 5, 1, n_filters2, n_filters3, 'conv3')  # result: 73x60
 
@@ -43,7 +45,7 @@ def mrf(heat_map):
 
 def conv2d(x, W, stride):
     """conv2d returns a 2d convolution layer with full stride."""
-    return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding='VALID')
+    return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding='SAME')
 
 
 def weight_variable(shape, fc=False):
@@ -140,6 +142,9 @@ def detection_rate(heat_map_pred, heat_map_target, normalized_radius=10):
 def read_flic():
     # TODO: read data
     # TODO: prepare 90x60 heat maps with gaussian blobs on the joints' locations
+    coefs = 1 / 256 * np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]])
+    kernel = coefs.T @ coefs
+    # Note: variance is 2 here, not 2.25
     pass
 
 
