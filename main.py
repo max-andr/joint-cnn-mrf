@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import time
-import tensorpack.dataflow.dataset as dataset
+import data
 from datetime import datetime
 
 np.set_printoptions(suppress=True, precision=4)
@@ -139,27 +139,6 @@ def detection_rate(heat_map_pred, heat_map_target, normalized_radius=10):
     pass
 
 
-def read_flic():
-    # TODO: read data
-    # TODO: prepare 90x60 heat maps with gaussian blobs on the joints' locations
-    coefs = 1 / 256 * np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]])
-    kernel = coefs.T @ coefs
-    # Note: variance is 2 here, not 2.25
-    pass
-
-
-def get_dataset():
-    # The simplest version is to import CIFAR-10 using [Tensorpack](https://github.com/ppwwyyxx/tensorpack)
-    x_train, y_train, x_test, y_test = read_flic()
-
-    # standardization
-    x_train_pixel_mean = x_train.mean(axis=0)  # per-pixel mean
-    x_train_pixel_std = x_train.std(axis=0)  # per-pixel std
-    x_train = (x_train - x_train_pixel_mean) / x_train_pixel_std
-    x_test = (x_test - x_train_pixel_mean) / x_train_pixel_std
-    return x_train, y_train, x_test, y_test
-
-
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
 tb_folder = 'tb_ex10'
@@ -169,7 +148,7 @@ tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 
 n_joints = 4  # TODO: how many?
-x_train, y_train, x_test, y_test = get_dataset()
+x_train, y_train, x_test, y_test = data.get_dataset('flic')
 in_height, in_width, n_colors = x_train.shape[1:3]
 hm_height, hm_width = y_train.shape[1:2]
 n_train_subset = 50  # for debugging purposes
@@ -280,5 +259,5 @@ print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 # TODO: CNN from Fig.4
 # TODO: Data Augm.: try zero padding and random crops!
 # TODO: spatial dropout
-
+# TODO: advanced pgm on small video clips from movies: http://bensapp.github.io/videopose-dataset.html
 
