@@ -4,6 +4,8 @@
 *.log
 *.out
 *.synctex.gz
+*.npy
+*.jpg
 
 .idea/
 FLIC/
