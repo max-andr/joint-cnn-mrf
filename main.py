@@ -8,6 +8,18 @@ import data
 import evaluation
 from datetime import datetime
 
+# joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'leye', 'reye', 'nose']
+
+joint_dependece = {'lsho':['nose', 'lelb'], 'lelb':['lsho', 'lwri'], 'lwri':['lelb'],
+                   'rsho':['nose', 'relb'], 'relb':['rsho', 'rwri'], 'rwri':['relb'],
+                   'lhip':['nose'], 'rhip':['nose'], 'nose':['lsho', 'rsho']}
+
+dict = {'lsho':0, 'lelb':1, 'lwri':2, 'rsho':3, 'relb':4, 'rwri':5, 'lhip':6,
+                 'lkne':7, 'lank':8, 'rhip':9, 'rkne':10, 'rank':11, 'leye':12, 'reye':13,
+                 'lear':14, 'rear':15, 'nose':16, 'msho':17, 'mhip':18, 'mear':19, 'mtorso':20,
+                 'mluarm':21, 'mruarm':22, 'mllarm':23, 'mrlarm':24, 'mluleg':25, 'mruleg':26,
+                'mllleg':27, 'mrlleg':28}
+
 np.set_printoptions(suppress=True, precision=4)
 
 
@@ -43,11 +55,49 @@ def model(x1, x2, n_joints, debug=False):
 
     return heat_map_pred
 
+def get_pairwise_distribution(joint, cond, pairwise_distribution):
+    """
+    get a specific frame from pairwise_distribution, which is 180 x 120 x n_pairs
+    :param joint: the joint name: string
+    :param cond: the name of the joint that is conditioned on: string 
+    :param pairwise_distribution: 180 x 120 x n_pairs, it's dictionary with the key as 'lsho_nose' meaning P of lsho given nose
+    :return: 1x180 x 120 x 1
+    """
+    return pairwise_distribution[joint + '_' + cond]
 
-def mrf(heat_map):
+def conv_mrf(A, B):
+    """
+    :param A: 1 x 180 x 120 x1
+    :param B: the kernel for conv: batch_size x 90 x 60 x 1
+    :return: C is batch_size x 90 x 60 x 1
+    """
+    C = []
+    B = tf.map_fn(lambda img: tf.image.flip_left_right(tf.image.flip_up_down(img)), B)
+    for i in range(B.shape[0]):
+        temp = tf.nn.conv2d(A, B[i, :, :, :], strides=[1, 1, 1, 1], padding='VALID')  #1 x 91 x 61 x 1
+        C.append(temp)
+    return tf.image.crop_to_bounding_box(C, 0, 0, 90, 60)
+
+def mrf_fixed(heat_map, pairwise_distribution):
+    """
+    from Learning Human Pose Estimation Features with Convolutional Networks
+    :param heat_map: is produced by model as the unary distributions: batch_size x 90 x 60 x n_joints
+    :param pairwise_distribution: the priors for a pair of joints, it's calculated from the histogram and is fixed 1x180x120xn_pairs
+    :return heat_map_hat: the result from equation 1 in the paper: batch_size x 90 x 60 x n_joints
+    """
+    # TODO: Can tf.log deal with log(0)???
+    heat_map_hat = []
+    for joint, cond_joints in enumerate(joint_dependece):
+        log_p_joint = tf.log(heat_map[:, :, :, dict[joint]])  # heat_map: batch_size x 90 x 60 x 1
+        for cond_joint in cond_joints:
+            log_p_joint = log_p_joint + tf.log(conv_mrf(get_pairwise_distribution(joint, cond_joint, pairwise_distribution),
+                                                        heat_map[:, :, :, dict[cond_joint]]))
+        heat_map_hat.append(tf.exp(log_p_joint))
+    return heat_map_hat
+
+def mrf_trainable(heat_map):
     # TODO: produce a new heat map using MRF
     return heat_map
-
 
 def conv2d(x, W, stride):
     """conv2d returns a 2d convolution layer with full stride."""
@@ -140,7 +190,8 @@ tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 
-n_joints = 11
+n_joints = 9
+n_pairs = 8
 x_train, y_train, x_test, y_test = data.get_dataset('flic')
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
@@ -158,6 +209,7 @@ lr_decay_coefs = [lr, lr/2, lr/5, lr/10]
 
 with tf.device('/gpu:0'):
     x1_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
+    pairwise_distribution = tf.placeholder(tf.float32, [1, hm_height*2, hm_width*2, n_pairs], name='pairwise_distribution')
     hm_target_in = tf.placeholder(tf.int64, [None, hm_height, hm_width, n_joints], name='heat_map')
     flag_train = tf.placeholder(tf.bool, name='is_training')
 
@@ -171,7 +223,7 @@ with tf.device('/gpu:0'):
 
     # The whole heat map prediction model is here
     heat_map_pred = model(x1, x2, n_joints, debug)
-    heat_map_pred = mrf(heat_map_pred)
+    heat_map_pred = mrf_fixed(heat_map_pred, pairwise_distribution)
 
     with tf.name_scope('loss'):
         mse = mean_squared_error(heat_map_pred, heat_map_target)
@@ -260,7 +312,7 @@ print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 
 # TODO: get first results with part-detector only and paste them into the report
 
-# TODO: set up PGM part.
+# TODO: set up PGM part: first try the star model without trainable weight, and then try the trainable MRF
 # TODO: Apply special initalization to the conv weights of PGM part, based on the histogram of joint displacements!
 
 
