@@ -10,15 +10,15 @@ from datetime import datetime
 
 # joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'leye', 'reye', 'nose']
 
-joint_dependece = {'lsho':['nose', 'lelb'], 'lelb':['lsho', 'lwri'], 'lwri':['lelb'],
-                   'rsho':['nose', 'relb'], 'relb':['rsho', 'rwri'], 'rwri':['relb'],
-                   'lhip':['nose'], 'rhip':['nose'], 'nose':['lsho', 'rsho']}
+joint_dependece = {'lsho': ['nose', 'lelb'], 'lelb': ['lsho', 'lwri'], 'lwri': ['lelb'],
+                   'rsho': ['nose', 'relb'], 'relb': ['rsho', 'rwri'], 'rwri': ['relb'],
+                   'lhip': ['nose'], 'rhip': ['nose'], 'nose': ['lsho', 'rsho']}
 
-dict = {'lsho':0, 'lelb':1, 'lwri':2, 'rsho':3, 'relb':4, 'rwri':5, 'lhip':6,
-                 'lkne':7, 'lank':8, 'rhip':9, 'rkne':10, 'rank':11, 'leye':12, 'reye':13,
-                 'lear':14, 'rear':15, 'nose':16, 'msho':17, 'mhip':18, 'mear':19, 'mtorso':20,
-                 'mluarm':21, 'mruarm':22, 'mllarm':23, 'mrlarm':24, 'mluleg':25, 'mruleg':26,
-                'mllleg':27, 'mrlleg':28}
+dict = {'lsho': 0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
+        'lkne': 7, 'lank': 8, 'rhip': 9, 'rkne': 10, 'rank': 11, 'leye': 12, 'reye': 13,
+        'lear': 14, 'rear': 15, 'nose': 16, 'msho': 17, 'mhip': 18, 'mear': 19, 'mtorso': 20,
+        'mluarm': 21, 'mruarm': 22, 'mllarm': 23, 'mrlarm': 24, 'mluleg': 25, 'mruleg': 26,
+        'mllleg': 27, 'mrlleg': 28}
 
 np.set_printoptions(suppress=True, precision=4)
 
@@ -33,7 +33,7 @@ def model(x1, x2, n_joints, debug=False):
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 128, 128, 128, 512, 256
     if debug:
-        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = n_filters1/8, n_filters2/8, n_filters3/8, n_filters4/8, n_filters5/8
+        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = n_filters1 / 8, n_filters2 / 8, n_filters3 / 8, n_filters4 / 8, n_filters5 / 8
 
     x1 = conv_layer(x1, 5, 1, 3, n_filters1, 'conv1_fullres')  # result: 360x240
     x1 = max_pool_layer(x1, 2, 2)  # result: 180x120
@@ -49,11 +49,12 @@ def model(x1, x2, n_joints, debug=False):
     x2 = conv_layer(x2, 5, 1, n_filters2, n_filters3, 'conv3_halfres')  # result: 90x60
     x2 = conv_layer(x2, 9, 1, n_filters3, n_filters4, 'conv4_halfres')  # result: 90x60
 
-    x = x1 + tf.image.resize_images(x2, [2*x2.shape[1], 2*x2.shape[2]])
+    x = x1 + tf.image.resize_images(x2, [2 * x2.shape[1], 2 * x2.shape[2]])
 
     heat_map_pred = conv_layer(x, 9, 1, n_filters4, n_filters5, 'conv5')  # result: 90x60
 
     return heat_map_pred
+
 
 def get_pairwise_distribution(joint, cond, pairwise_distribution):
     """
@@ -65,8 +66,10 @@ def get_pairwise_distribution(joint, cond, pairwise_distribution):
     """
     return pairwise_distribution[joint + '_' + cond]
 
+
 def conv_mrf(A, B):
     """
+    
     :param A: 1 x 180 x 120 x1
     :param B: the kernel for conv: batch_size x 90 x 60 x 1
     :return: C is batch_size x 90 x 60 x 1
@@ -74,9 +77,10 @@ def conv_mrf(A, B):
     C = []
     B = tf.map_fn(lambda img: tf.image.flip_left_right(tf.image.flip_up_down(img)), B)
     for i in range(B.shape[0]):
-        temp = tf.nn.conv2d(A, B[i, :, :, :], strides=[1, 1, 1, 1], padding='VALID')  #1 x 91 x 61 x 1
+        temp = tf.nn.conv2d(A, B[i, :, :, :], strides=[1, 1, 1, 1], padding='VALID')  # 1 x 91 x 61 x 1
         C.append(temp)
     return tf.image.crop_to_bounding_box(C, 0, 0, 90, 60)
+
 
 def mrf_fixed(heat_map, pairwise_distribution):
     """
@@ -90,14 +94,17 @@ def mrf_fixed(heat_map, pairwise_distribution):
     for joint, cond_joints in enumerate(joint_dependece):
         log_p_joint = tf.log(heat_map[:, :, :, dict[joint]])  # heat_map: batch_size x 90 x 60 x 1
         for cond_joint in cond_joints:
-            log_p_joint = log_p_joint + tf.log(conv_mrf(get_pairwise_distribution(joint, cond_joint, pairwise_distribution),
-                                                        heat_map[:, :, :, dict[cond_joint]]))
+            log_p_joint = log_p_joint + tf.log(
+                conv_mrf(get_pairwise_distribution(joint, cond_joint, pairwise_distribution),
+                         heat_map[:, :, :, dict[cond_joint]]))
         heat_map_hat.append(tf.exp(log_p_joint))
     return heat_map_hat
+
 
 def mrf_trainable(heat_map):
     # TODO: produce a new heat map using MRF
     return heat_map
+
 
 def conv2d(x, W, stride):
     """conv2d returns a 2d convolution layer with full stride."""
@@ -129,7 +136,7 @@ def conv_layer(x, size, stride, n_in, n_out, name):
         pre_activ = conv2d(x, w, stride) + b
         activ = tf.nn.relu(pre_activ)
     # we do it out of the namescope to show it separately in Tensorboard
-    tf.summary.image('f_activ_'+name, activ[:, :, :, 5:6], 20)
+    tf.summary.image('f_activ_' + name, activ[:, :, :, 5:6], 20)
     return activ
 
 
@@ -177,7 +184,7 @@ def mean_squared_error(hm1, hm2):
 
     hm1, hm2: tensor of size [n_images, height, width, n_joints]
     """
-    return tf.reduce_sum((hm1 - hm2)**2, axis=[1, 2, 3]) / hm1.shape[3]  # we divide over number of joints
+    return tf.reduce_sum((hm1 - hm2) ** 2, axis=[1, 2, 3]) / hm1.shape[3]  # we divide over number of joints
 
 
 debug = True
@@ -204,12 +211,13 @@ batch_size = 1
 lmbd = 0.0
 lr = 0.05
 n_updates_total = n_epochs * n_train // batch_size
-lr_decay_n_updates = [round(0.66*n_updates_total), round(0.8*n_updates_total), round(0.9*n_updates_total)]
-lr_decay_coefs = [lr, lr/2, lr/5, lr/10]
+lr_decay_n_updates = [round(0.66 * n_updates_total), round(0.8 * n_updates_total), round(0.9 * n_updates_total)]
+lr_decay_coefs = [lr, lr / 2, lr / 5, lr / 10]
 
 with tf.device('/gpu:0'):
     x1_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
-    pairwise_distribution = tf.placeholder(tf.float32, [1, hm_height*2, hm_width*2, n_pairs], name='pairwise_distribution')
+    pairwise_distribution = tf.placeholder(tf.float32, [1, hm_height * 2, hm_width * 2, n_pairs],
+                                           name='pairwise_distribution')
     hm_target_in = tf.placeholder(tf.int64, [None, hm_height, hm_width, n_joints], name='heat_map')
     flag_train = tf.placeholder(tf.bool, name='is_training')
 
@@ -218,8 +226,9 @@ with tf.device('/gpu:0'):
     lr_tf = tf.train.piecewise_constant(n_iters_tf, lr_decay_n_updates, lr_decay_coefs)
 
     # Data augmentation: we apply the same random transformations both to images and heat maps
-    x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x1_in, hm_target_in), lambda: (x1_in, hm_target_in))
-    x2 = tf.image.resize_images(x1, [x1.shape[1]//2, x1.shape[2]//2])
+    x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x1_in, hm_target_in),
+                            lambda: (x1_in, hm_target_in))
+    x2 = tf.image.resize_images(x1, [x1.shape[1] // 2, x1.shape[2] // 2])
 
     # The whole heat map prediction model is here
     heat_map_pred = model(x1, x2, n_joints, debug)
@@ -280,7 +289,8 @@ with tf.Session(config=config) as sess:
         for x_train_batch, y_train_batch in get_next_batch(x_train, y_train, batch_size):
             global_iter += 1
             if tb_log_iters:
-                _, summary = sess.run([train_step, tb_merged], feed_dict={x: x_train_batch, y: y_train_batch, lr_tf: lr})
+                _, summary = sess.run([train_step, tb_merged],
+                                      feed_dict={x: x_train_batch, y: y_train_batch, lr_tf: lr})
                 train_iters_writer.add_summary(summary, global_iter)
             else:
                 sess.run(train_step, feed_dict={x: x_train_batch, y: y_train_batch, lr_tf: lr})
@@ -326,4 +336,3 @@ print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 # TODO: maybe add 1x1 conv layer in the end?
 # TODO: spatial dropout
 # TODO: advanced pgm on small video clips from movies: http://bensapp.github.io/videopose-dataset.html
-
