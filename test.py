@@ -1,9 +1,11 @@
 import numpy as np
+import pickle
 """
 This file is to test if the data.py prepare the data correctly
 
 """
 
+n_joint = 9
 y_test = np.load('y_test_flic.npy')
 x_test = np.load('x_test_flic.npy')
 print('x_test shape is', x_test.shape)
@@ -13,11 +15,11 @@ print('Show the %dth image and the heat map for nose:' % i)
 y_test = y_test.astype(np.float32)
 y_test = y_test / 256
 
-coords = np.zeros([2, 11])
+coords = np.zeros([2, n_joint])
 img = x_test[i, :, :, :]
 img = np.reshape(img, (x_test.shape[1], x_test.shape[2], x_test.shape[3]))
 
-for joint in range(11):
+for joint in range(n_joint):
     print(joint)
     hmap = y_test[i, :, :, joint]
     hmap = np.reshape(hmap, (y_test.shape[1], y_test.shape[2]))
@@ -28,10 +30,15 @@ for joint in range(11):
 coords = coords * 8
 print(coords)
 
+with open('pairwise_distribution.pickle', 'rb') as handle:
+    pairwise_distribution = pickle.load(handle)
+
 import matplotlib.pyplot as plt
 plt.figure(1)
 plt.imshow(np.uint8(img))
 plt.figure(2)
 plt.imshow(np.uint8(hmap))
+plt.figure(3)
+plt.imshow(np.uint8(pairwise_distribution['lsho_nose']))
 plt.show()
 

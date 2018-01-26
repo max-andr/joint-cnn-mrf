@@ -8,11 +8,9 @@ import data
 import evaluation
 from datetime import datetime
 
-# joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'leye', 'reye', 'nose']
-
 joint_dependece = {'lsho': ['nose', 'lelb'], 'lelb': ['lsho', 'lwri'], 'lwri': ['lelb'],
                    'rsho': ['nose', 'relb'], 'relb': ['rsho', 'rwri'], 'rwri': ['relb'],
-                   'lhip': ['nose'], 'rhip': ['nose'], 'nose': ['lsho', 'rsho']}
+                   'lhip': ['nose'], 'rhip': ['nose'], 'nose': ['lsho', 'rsho', 'lhip', 'rhip']}
 
 dict = {'lsho': 0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
         'lkne': 7, 'lank': 8, 'rhip': 9, 'rkne': 10, 'rank': 11, 'leye': 12, 'reye': 13,
@@ -69,7 +67,6 @@ def get_pairwise_distribution(joint, cond, pairwise_distribution):
 
 def conv_mrf(A, B):
     """
-    
     :param A: 1 x 180 x 120 x1
     :param B: the kernel for conv: batch_size x 90 x 60 x 1
     :return: C is batch_size x 90 x 60 x 1
