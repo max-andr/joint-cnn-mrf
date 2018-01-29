@@ -32,9 +32,9 @@ def model(x, n_joints, debug=False):
     """
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_bottleneck, n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 64, 64, 128, 256, 256, 512
-    if debug:
-        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = \
-            n_filters1 // 8, n_filters2 // 8, n_filters3 // 8, n_filters4 // 8, n_filters5 // 8
+    # if debug:
+    #     n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = \
+    #         n_filters1 // 8, n_filters2 // 8, n_filters3 // 8, n_filters4 // 8, n_filters5 // 8
 
     x1 = x
     x2 = tf.image.resize_images(x, [int(x.shape[1]) // 2, int(x.shape[2]) // 2])
@@ -225,8 +225,9 @@ def get_dataset():
     return x_train, y_train, x_test, y_test
 
 
-gpu_number, gpu_memory = '1', 0.6
-debug = False
+gpu_number, gpu_memory = '6', 0.6
+debug = True
+train_from_scratch = False
 model_path = 'models_ex'
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
@@ -235,7 +236,7 @@ tb_train_iter = '{}/{}/train_iter'.format(tb_folder, cur_timestamp)
 tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
-img_tb_from, img_tb_to = 1000, 1010
+img_tb_from, img_tb_to = 450, 465
 n_eval_ex = 500
 
 n_joints = 9
@@ -244,10 +245,10 @@ x_train, y_train, x_test, y_test = get_dataset()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 if debug:
-    n_train, n_test = 500, 100  # for debugging purposes we take only a small subset
+    n_train, n_test = 500, 500  # for debugging purposes we take only a small subset
     x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
 # Main hyperparameters
-n_epochs = 60
+n_epochs = 10
 batch_size = 10
 lmbd = 0.00000
 lr, optimizer = 0.001, 'adam'  # So far best without BN: 0.001, 'adam'
@@ -275,7 +276,8 @@ with tf.device('/gpu:0'):
     # hm_pred = mrf_fixed(hm_pred, pairwise_distribution)
 
     with tf.name_scope('loss'):
-        mse = mean_squared_error(spatial_softmax(hm_pred), hm_target)
+        hm_pred = spatial_softmax(hm_pred)
+        mse = mean_squared_error(hm_pred, hm_target)
         loss = mse + lmbd * weight_decay(var_pattern='weights')
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -308,7 +310,10 @@ with tf.device('/gpu:0'):
 gpu_options = tf.GPUOptions(visible_device_list=gpu_number, per_process_gpu_memory_fraction=gpu_memory)
 config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
 with tf.Session(config=config) as sess:
-    sess.run(tf.global_variables_initializer())
+    if train_from_scratch:
+        sess.run(tf.global_variables_initializer())
+    else:
+        saver.restore(sess, model_path+'/2018-01-28 21:36:32')
 
     tb.run_summary(sess, train_writer, tb_merged, 0, feed_dict={x_in: x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to], flag_train: False})
     tb.run_summary(sess, test_writer, tb_merged, 0, feed_dict={x_in: x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to], flag_train: False})

@@ -3,9 +3,13 @@
 *.aux
 *.log
 *.out
-*.synctex.gz
 *.npy
 *.jpg
+
+*.synctex.gz
+*.nav
+*.snm
+*.toc
 
 .idea/
 FLIC/
