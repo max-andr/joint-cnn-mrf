@@ -1,0 +1,319 @@
+First succ run, lr=0.001, 
+init /10, batch=10
+Epoch: 0  test err: 0.34542  train err: 0.34542
+Epoch: 1  test err: 0.34238  train err: 0.34238
+Epoch: 2  test err: 0.34330  train err: 0.34330
+Epoch: 3  test err: 0.34467  train err: 0.34467
+Epoch: 4  test err: 0.33704  train err: 0.33704
+Epoch: 5  test err: 0.32818  train err: 0.32818
+Epoch: 6  test err: 0.31553  train err: 0.31553
+Epoch: 7  test err: 0.31856  train err: 0.31856
+Epoch: 8  test err: 0.31268  train err: 0.31268
+Epoch: 9  test err: 0.30857  train err: 0.30857
+Epoch: 10  test err: 0.30597  train err: 0.30597
+Epoch: 11  test err: 0.30829  train err: 0.30829
+Epoch: 12  test err: 0.30396  train err: 0.30396
+Epoch: 13  test err: 0.30121  train err: 0.30121
+Epoch: 14  test err: 0.29114  train err: 0.29114
+Epoch: 15  test err: 0.29430  train err: 0.29430
+Epoch: 16  test err: 0.29038  train err: 0.29038
+Epoch: 17  test err: 0.28856  train err: 0.28856
+Epoch: 18  test err: 0.28729  train err: 0.28729
+Epoch: 19  test err: 0.27777  train err: 0.27777
+Epoch: 20  test err: 0.28072  train err: 0.28072
+Epoch: 21  test err: 0.26465  train err: 0.26465
+Epoch: 22  test err: 0.26483  train err: 0.26483
+Epoch: 23  test err: 0.25894  train err: 0.25894
+Epoch: 24  test err: 0.25162  train err: 0.25162
+Epoch: 25  test err: 0.25622  train err: 0.25622
+Epoch: 26  test err: 0.25126  train err: 0.25126
+Epoch: 27  test err: 0.25781  train err: 0.25781
+Epoch: 28  test err: 0.25177  train err: 0.25177
+Epoch: 29  test err: 0.24999  train err: 0.24999
+Epoch: 30  test err: 0.24943  train err: 0.24943
+
+
+
+lr, optimizer = 0.1, 'momentum'
+he init, batch=10
+Epoch: 0  test err: 0.34542  train err: 0.34542
+Epoch: 1  test err: 0.34388  train err: 0.34388
+Epoch: 2  test err: 0.34241  train err: 0.34241
+Epoch: 3  test err: 0.34033  train err: 0.34033
+Epoch: 4  test err: 0.34255  train err: 0.34255
+Epoch: 5  test err: 0.32851  train err: 0.32851
+Epoch: 6  test err: 0.33093  train err: 0.33093
+Epoch: 7  test err: 0.32457  train err: 0.32457
+Epoch: 8  test err: 0.31210  train err: 0.31210
+Epoch: 9  test err: 0.31633  train err: 0.31633
+Epoch: 10  test err: 0.29962  train err: 0.29962
+Epoch: 11  test err: 0.28982  train err: 0.28982
+Epoch: 12  test err: 0.30259  train err: 0.30259
+Epoch: 13  test err: 0.28692  train err: 0.28692
+Epoch: 14  test err: 0.28947  train err: 0.28947
+Epoch: 15  test err: 0.27815  train err: 0.27815
+Epoch: 16  test err: 0.26360  train err: 0.26360
+Epoch: 17  test err: 0.26874  train err: 0.26874
+Epoch: 18  test err: 0.26232  train err: 0.26232
+Epoch: 19  test err: 0.25903  train err: 0.25903
+Epoch: 20  test err: 0.27946  train err: 0.27946
+Epoch: 21  test err: 0.25141  train err: 0.25141
+Epoch: 22  test err: 0.22342  train err: 0.22342
+Epoch: 23  test err: 0.21877  train err: 0.21877
+Epoch: 24  test err: 0.21333  train err: 0.21333
+Epoch: 25  test err: 0.20356  train err: 0.20356
+Epoch: 26  test err: 0.20219  train err: 0.20219
+Epoch: 27  test err: 0.19622  train err: 0.19622
+Epoch: 28  test err: 0.19385  train err: 0.19385
+Epoch: 29  test err: 0.19299  train err: 0.19299
+Epoch: 30  test err: 0.18957  train err: 0.18957
+
+
+lr, optimizer = 0.1, 'momentum'
+he init, batch=5
+Epoch: 0  test err: 0.34542  train err: 0.34542
+Epoch: 1  test err: 0.33835  train err: 0.33835
+Epoch: 2  test err: 0.33299  train err: 0.33299
+Epoch: 3  test err: 0.31788  train err: 0.31788
+Epoch: 4  test err: 0.32815  train err: 0.32815
+Epoch: 5  test err: 0.31381  train err: 0.31381
+Epoch: 6  test err: 0.29982  train err: 0.29982
+Epoch: 7  test err: 0.30050  train err: 0.30050
+Epoch: 8  test err: 0.28621  train err: 0.28621
+Epoch: 9  test err: 0.29893  train err: 0.29893
+Epoch: 10  test err: 0.26606  train err: 0.26606
+Epoch: 11  test err: 0.27566  train err: 0.27566
+Epoch: 12  test err: 0.25317  train err: 0.25317
+Epoch: 13  test err: 0.26107  train err: 0.26107
+Epoch: 14  test err: 0.25115  train err: 0.25115
+Epoch: 15  test err: 0.23323  train err: 0.23323
+Epoch: 16  test err: 0.24622  train err: 0.24622
+Epoch: 17  test err: 0.21970  train err: 0.21970
+Epoch: 18  test err: 0.21910  train err: 0.21910
+Epoch: 19  test err: 0.21347  train err: 0.21347
+Epoch: 20  test err: 0.19117  train err: 0.19117
+Epoch: 21  test err: 0.18949  train err: 0.18949
+Epoch: 22  test err: 0.16328  train err: 0.16328
+Epoch: 23  test err: 0.16490  train err: 0.16490
+Epoch: 24  test err: 0.15355  train err: 0.15355
+Epoch: 25  test err: 0.13926  train err: 0.13926
+Epoch: 26  test err: 0.13703  train err: 0.13703
+Epoch: 27  test err: 0.13274  train err: 0.13274
+Epoch: 28  test err: 0.12985  train err: 0.12985
+Epoch: 29  test err: 0.12842  train err: 0.12842
+Epoch: 30  test err: 0.12835  train err: 0.12835
+
+
+lr, optimizer = 1.0, 'momentum'
+he init, batch=5
+too high, no progress
+
+
+
+lr, optimizer = 1.0, 'adam'
+he init, batch=5
+too high, divergence
+
+
+lr, optimizer = 0.01, 'adam'
+he init, batch=5
+too high, no progress
+
+
+lr, optimizer = 0.001, 'adam'
+he init, batch=5
+best
+Epoch: 0  test err: 0.34545  train err: 0.34557
+Epoch: 1  test err: 0.34240  train err: 0.34178
+Epoch: 2  test err: 0.34395  train err: 0.34319
+Epoch: 3  test err: 0.34114  train err: 0.33848
+Epoch: 4  test err: 0.34131  train err: 0.33017
+Epoch: 5  test err: 0.34672  train err: 0.33415
+Epoch: 6  test err: 0.36858  train err: 0.32782
+Epoch: 7  test err: 0.35304  train err: 0.32190
+Epoch: 8  test err: 0.36211  train err: 0.31892
+Epoch: 9  test err: 0.39991  train err: 0.29248
+Epoch: 10  test err: 0.39724  train err: 0.27096
+Epoch: 11  test err: 0.36443  train err: 0.25640
+Epoch: 12  test err: 0.41655  train err: 0.22004
+Epoch: 13  test err: 0.40147  train err: 0.21860
+Epoch: 14  test err: 0.42255  train err: 0.19909
+Epoch: 15  test err: 0.44437  train err: 0.17034
+Epoch: 16  test err: 0.42481  train err: 0.16705
+Epoch: 17  test err: 0.43262  train err: 0.15240
+Epoch: 18  test err: 0.43674  train err: 0.14020
+Epoch: 19  test err: 0.44686  train err: 0.14014
+Epoch: 20  test err: 0.43074  train err: 0.13351
+Epoch: 21  test err: 0.42055  train err: 0.11671
+Epoch: 22  test err: 0.42466  train err: 0.09947
+Epoch: 23  test err: 0.43200  train err: 0.09441
+Epoch: 24  test err: 0.43020  train err: 0.09591
+Epoch: 25  test err: 0.43582  train err: 0.08601
+Epoch: 26  test err: 0.43750  train err: 0.08359
+Epoch: 27  test err: 0.44111  train err: 0.08189
+Epoch: 28  test err: 0.44310  train err: 0.08043
+Epoch: 29  test err: 0.44627  train err: 0.07924
+Epoch: 30  test err: 0.44584  train err: 0.07873
+
+
+lr, optimizer = 0.0001, 'adam'
+he init, batch=5
+much worse! around 0.20 in the end
+
+
+lr, optimizer = 0.001, 'adam'
+he init, batch=5, 500 train images
+best
+Epoch: 0  test err: 0.34564  train err: 0.34551
+Epoch: 1  test err: 0.34523  train err: 0.34175
+Epoch: 2  test err: 0.34374  train err: 0.34006
+Epoch: 3  test err: 0.34535  train err: 0.34332
+Epoch: 4  test err: 0.35045  train err: 0.33254
+Epoch: 5  test err: 0.42968  train err: 0.30494
+Epoch: 6  test err: 0.38192  train err: 0.31496
+Epoch: 7  test err: 0.42305  train err: 0.28156
+Epoch: 8  test err: 0.43156  train err: 0.26942
+Epoch: 9  test err: 0.41469  train err: 0.25686
+Epoch: 10  test err: 0.43445  train err: 0.23859
+Epoch: 11  test err: 0.42381  train err: 0.22845
+Epoch: 12  test err: 0.41978  train err: 0.21396
+Epoch: 13  test err: 0.47640  train err: 0.19005
+Epoch: 14  test err: 0.46471  train err: 0.19659
+Epoch: 15  test err: 0.48092  train err: 0.16859
+Epoch: 16  test err: 0.48087  train err: 0.16168
+Epoch: 17  test err: 0.46045  train err: 0.16031
+Epoch: 18  test err: 0.47103  train err: 0.14863
+Epoch: 19  test err: 0.46345  train err: 0.14192
+Epoch: 20  test err: 0.46839  train err: 0.13238
+Epoch: 21  test err: 0.44470  train err: 0.12758
+Epoch: 22  test err: 0.46362  train err: 0.10577
+Epoch: 23  test err: 0.49002  train err: 0.10121
+Epoch: 24  test err: 0.44780  train err: 0.09635
+Epoch: 25  test err: 0.47694  train err: 0.08909
+Epoch: 26  test err: 0.47405  train err: 0.08825
+Epoch: 27  test err: 0.46540  train err: 0.08525
+Epoch: 28  test err: 0.46873  train err: 0.08367
+Epoch: 29  test err: 0.48264  train err: 0.08163
+Epoch: 30  test err: 0.47821  train err: 0.08016
+
+
+
+lr, optimizer = 0.001, 'adam'
+he init, batch=10, 500 train images
+batch=10 == batch=5 (almost), but a bit faster
+Epoch: 0  test err: 0.34563  train err: 0.34562
+Epoch: 1  test err: 0.34378  train err: 0.33999
+Epoch: 2  test err: 0.34686  train err: 0.33458
+Epoch: 3  test err: 0.35680  train err: 0.32746
+Epoch: 4  test err: 0.37005  train err: 0.32251
+Epoch: 5  test err: 0.37732  train err: 0.29662
+Epoch: 6  test err: 0.40125  train err: 0.29244
+Epoch: 7  test err: 0.41210  train err: 0.26932
+Epoch: 8  test err: 0.40495  train err: 0.25626
+Epoch: 9  test err: 0.42934  train err: 0.24107
+Epoch: 10  test err: 0.44261  train err: 0.22934
+Epoch: 11  test err: 0.44960  train err: 0.20196
+Epoch: 12  test err: 0.43450  train err: 0.20107
+Epoch: 13  test err: 0.44692  train err: 0.19188
+Epoch: 14  test err: 0.43889  train err: 0.17903
+Epoch: 15  test err: 0.45752  train err: 0.16987
+Epoch: 16  test err: 0.47156  train err: 0.17000
+Epoch: 17  test err: 0.49230  train err: 0.15239
+Epoch: 18  test err: 0.43618  train err: 0.15761
+Epoch: 19  test err: 0.44632  train err: 0.14481
+Epoch: 20  test err: 0.41351  train err: 0.14464
+Epoch: 21  test err: 0.49597  train err: 0.12908
+Epoch: 22  test err: 0.46448  train err: 0.11804
+Epoch: 23  test err: 0.44586  train err: 0.10895
+Epoch: 24  test err: 0.46482  train err: 0.10677
+Epoch: 25  test err: 0.47564  train err: 0.09861
+Epoch: 26  test err: 0.46960  train err: 0.09750
+Epoch: 27  test err: 0.47356  train err: 0.09669
+Epoch: 28  test err: 0.47365  train err: 0.09476
+Epoch: 29  test err: 0.47222  train err: 0.09420
+Epoch: 30  test err: 0.48280  train err: 0.09340
+
+
+
+BN before, lr=0.001 (no significant difference whether do it before or after)
+Epoch: 0  test err: 0.67103  train err: 0.67123
+Epoch: 1  test err: 0.65662  train err: 0.66180
+Epoch: 2  test err: 0.61683  train err: 0.65236
+Epoch: 3  test err: 0.60893  train err: 0.58779
+Epoch: 4  test err: 0.55288  train err: 0.55795
+Epoch: 5  test err: 0.58391  train err: 0.52953
+Epoch: 6  test err: 0.53474  train err: 0.42213
+Epoch: 7  test err: 0.52900  train err: 0.40317
+Epoch: 8  test err: 0.53783  train err: 0.37233
+Epoch: 9  test err: 0.53733  train err: 0.41582
+Epoch: 10  test err: 0.51145  train err: 0.35484
+Epoch: 11  test err: 0.56050  train err: 0.33612
+Epoch: 12  test err: 0.52399  train err: 0.28734
+Epoch: 13  test err: 0.52032  train err: 0.25343
+Epoch: 14  test err: 0.51966  train err: 0.25237
+Epoch: 15  test err: 0.51736  train err: 0.23595
+Epoch: 16  test err: 0.53475  train err: 0.22177
+Epoch: 17  test err: 0.50863  train err: 0.20727
+Epoch: 18  test err: 0.57918  train err: 0.21257
+Epoch: 19  test err: 0.52350  train err: 0.18645
+Epoch: 20  test err: 0.51631  train err: 0.19050
+Epoch: 21  test err: 0.49459  train err: 0.16301
+Epoch: 22  test err: 0.50785  train err: 0.16606
+Epoch: 23  test err: 0.54229  train err: 0.18068
+Epoch: 24  test err: 0.52102  train err: 0.15697
+Epoch: 25  test err: 0.50134  train err: 0.16275
+Epoch: 26  test err: 0.50804  train err: 0.13506
+Epoch: 27  test err: 0.51297  train err: 0.14845
+Epoch: 28  test err: 0.52826  train err: 0.14454
+Epoch: 29  test err: 0.50669  train err: 0.16862
+Epoch: 30  test err: 0.49456  train err: 0.13599
+Epoch: 31  test err: 0.49601  train err: 0.13182
+Epoch: 32  test err: 0.52939  train err: 0.13619
+Epoch: 33  test err: 0.52139  train err: 0.11114
+Epoch: 34  test err: 0.49423  train err: 0.11650
+Epoch: 35  test err: 0.51337  train err: 0.10452
+Epoch: 36  test err: 0.48968  train err: 0.10830
+Epoch: 37  test err: 0.52513  train err: 0.10765
+Epoch: 38  test err: 0.49559  train err: 0.08075
+Epoch: 39  test err: 0.49447  train err: 0.13296
+Epoch: 40  test err: 0.52330  train err: 0.09354
+Epoch: 41  test err: 0.51186  train err: 0.09558
+Epoch: 42  test err: 0.50582  train err: 0.09992
+Epoch: 43  test err: 0.51959  train err: 0.07841
+Epoch: 44  test err: 0.51051  train err: 0.09273
+Epoch: 45  test err: 0.51782  train err: 0.09141
+Epoch: 46  test err: 0.52429  train err: 0.07228
+Epoch: 47  test err: 0.51629  train err: 0.06858
+Epoch: 48  test err: 0.52066  train err: 0.07310
+Epoch: 49  test err: 0.50087  train err: 0.06742
+Epoch: 50  test err: 0.52236  train err: 0.07432
+Epoch: 51  test err: 0.51789  train err: 0.08854
+Epoch: 52  test err: 0.52022  train err: 0.06503
+Epoch: 53  test err: 0.52475  train err: 0.06997
+Epoch: 54  test err: 0.50847  train err: 0.07602
+Epoch: 55  test err: 0.52641  train err: 0.06621
+Epoch: 56  test err: 0.51390  train err: 0.06658
+Epoch: 57  test err: 0.49921  train err: 0.04343
+Epoch: 58  test err: 0.50696  train err: 0.04138
+Epoch: 59  test err: 0.49244  train err: 0.03780
+Epoch: 60  test err: 0.49502  train err: 0.03874
+Epoch: 61  test err: 0.49797  train err: 0.04112
+Epoch: 62  test err: 0.50386  train err: 0.03744
+Epoch: 63  test err: 0.48944  train err: 0.04528
+Epoch: 64  test err: 0.49369  train err: 0.03717
+Epoch: 65  test err: 0.49764  train err: 0.03115
+Epoch: 66  test err: 0.50012  train err: 0.03077
+Epoch: 67  test err: 0.49995  train err: 0.03130
+Epoch: 68  test err: 0.49323  train err: 0.02989
+Epoch: 69  test err: 0.49658  train err: 0.03171
+Epoch: 70  test err: 0.50423  train err: 0.03087
+Epoch: 71  test err: 0.50769  train err: 0.03196
+Epoch: 72  test err: 0.50639  train err: 0.02981
+Epoch: 73  test err: 0.50232  train err: 0.02869
+Epoch: 74  test err: 0.50489  train err: 0.02900
+Epoch: 75  test err: 0.49918  train err: 0.02809
+Epoch: 76  test err: 0.50122  train err: 0.02873
+Epoch: 77  test err: 0.50477  train err: 0.02908
+Epoch: 78  test err: 0.49726  train err: 0.02788
+Epoch: 79  test err: 0.50449  train err: 0.02794
+Epoch: 80  test err: 0.50094  train err: 0.02811

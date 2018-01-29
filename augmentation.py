@@ -5,8 +5,8 @@ import numpy as np
 def horizontal_flip(img1, img2):
     p = tf.random_uniform([1])[0]
     img1, img2 = tf.cond(tf.greater(p, 0.5),
-                         lambda: tf.image.random_flip_left_right(img1), tf.image.random_flip_left_right(img2),
-                         (img1, img2))
+                         lambda: (tf.image.random_flip_left_right(img1), tf.image.random_flip_left_right(img2)),
+                         lambda: (img1, img2))
     return img1, img2
 
 
@@ -18,7 +18,8 @@ def horizontal_flip(img1, img2):
 #     return img1, img2
 
 
-def augment_each(img, hm):
+def augment_each(img_hm):
+    img, hm = img_hm
     img, hm = horizontal_flip(img, hm)
     # img, hm = crop(img, hm)
     img = tf.image.random_brightness(img, max_delta=32. / 255.)
