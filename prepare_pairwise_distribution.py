@@ -42,7 +42,7 @@ def compute_pairwise_distribution(joint, cond_j):
         xj, yj = np.where(img_j == np.max(img_j))
         xcj, ycj = np.where(img_cj == np.max(img_cj))
         pd[hp_height+(xj-xcj), hp_width+(yj-ycj)] = pd[hp_height+(xj-xcj), hp_width+(yj-ycj)] + 1  # count for the histgram
-    pd = pd / np.float32(np.sum(pd))
+    # pd = pd / np.float32(np.sum(pd))
     pd = signal.convolve2d(pd, kernel, mode='same', boundary='fill', fillvalue=0)
     return pd
 

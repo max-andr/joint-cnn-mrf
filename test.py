@@ -39,6 +39,6 @@ plt.imshow(np.uint8(img))
 plt.figure(2)
 plt.imshow(np.uint8(hmap))
 plt.figure(3)
-plt.imshow(np.uint8(pairwise_distribution['lsho_nose']))
+plt.imshow(np.uint8(pairwise_distribution['relb_rwri']))
 plt.show()
 
