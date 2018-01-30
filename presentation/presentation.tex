@@ -1,5 +1,6 @@
 \documentclass{beamer}
 
+
 % For more themes, color themes and font themes, see:
 % http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
 
@@ -22,6 +23,7 @@
 \usepackage{mathtools}
 \usepackage[absolute,overlay]{textpos}
 \usepackage{graphicx}
+\graphicspath{ {img/} }
 \usepackage[absolute,overlay]{textpos}
 \usepackage{bm}
 \usepackage[normalem]{ulem}
@@ -70,6 +72,73 @@
 
 
 
+
+	\begin{frame}[t]
+        \frametitle{Higher-Level Spatial Model}
+        \begin{center}
+            Problem: Part Detector produces many false-positives. \newline \newline
+			Solution: use a Spatial Model to enforce the consistency.\\
+        \end{center}
+         \begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
+            \includegraphics[scale=0.55]{false_positive.png}
+         \end{figure}
+    \end{frame}
+
+	\begin{frame}[t]
+        \frametitle{Spatial Model as a PGM}
+        \begin{center}
+			We adopt the star model.\\
+            \begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
+            \includegraphics[scale=0.3]{star_model.png}
+            \end{figure}
+        \end{center}
+    \end{frame}
+
+    \begin{frame}[t]
+        \frametitle{Pairwise Potentials}
+        \begin{center}
+            \begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
+            \includegraphics[scale=0.34]{pairwise_po.png}
+            \end{figure}
+        \end{center}
+    \end{frame}
+
+	\begin{frame}[t]
+        \frametitle{Inference on PGM}
+        \begin{center}
+            %$\hat{p}_{i} \propto p_{i} \prod_{u\in U}(p_{i|u}*p_u)$ \\
+            %where U is a set of neighbouring nodes of body part i
+            \begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
+            \includegraphics[scale=0.32]{inference.png}
+            \end{figure}
+        \end{center}
+    \end{frame}
+
+	\begin{frame}[t]
+        \frametitle{Spatial Model as a trainable PGM}
+        \begin{center}
+            The Spatial Model can also be modeled as fully connected graph with trainable parameters.\newline \newline
+
+        \end{center}
+
+        \begin{flushleft}
+            Star PGM:\\
+            \begin{itemize}
+                \item computationally efficient (during the train phase).\\
+                \item Less parameters to be train.\\
+                \item Inference is exact.\\
+            \end{itemize}
+            Fully Connected PGM:\\
+            \begin{itemize}
+                \item More model capacity.\\
+                \item \textbf{The model is learned from the data, no need of expert prior.}\\
+                \item Loopy structure has no guarantee of convergence.
+            \end{itemize}
+        \end{flushleft}
+    \end{frame}
+
+
+
     \begin{frame}[t]
         \frametitle{Conclusions}
         \begin{itemize}
@@ -95,5 +164,9 @@
 		\bibitem{cnn_pgm_for_hpe}
 		\href{https://arxiv.org/abs/1406.2984}
 		{Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation}
+
+		\bibitem{cnn_pgm_for_hpe}
+		\href{https://arxiv.org/abs/1312.7302}
+		{Learning Human Pose Estimation Features with Convolutional Networks}
 	\end{thebibliography} 
 \end{document}
