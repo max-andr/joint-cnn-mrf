@@ -41,9 +41,10 @@ def run_summary(sess, writer, tb_op, cur_iter, feed_dict):
     writer.add_summary(summary, cur_iter)
 
 
-def main_summaries(grads_vars, loss, det_rate):
+def main_summaries(grads_vars, mse_pd, mse_sm, det_rate):
     with tf.name_scope('main'):
-        tf.summary.scalar('loss', loss)
+        tf.summary.scalar('mse_part_detector', mse_pd)
+        tf.summary.scalar('mse_spatial_model', mse_sm)
         tf.summary.scalar('det_rate', det_rate)
         # Add histograms for gradients (only for weights, not biases)
         for grad, var in grads_vars:
@@ -65,10 +66,6 @@ def show_img_plus_hm(x, hm, joint_ids, in_height, in_width, hm_name):
     # Adjust brightness of the image and feature map, so that the most bright pixel equals 1
     contrast_x = 1 / tf.reduce_max(x, axis=[1, 2, 3], keep_dims=True)
     contrast_hm = 1 / tf.reduce_max(hm, axis=[1, 2], keep_dims=True)
-    var_summary(x, 'input', hm_name)
-    var_summary(hm, 'hm', hm_name)
-    var_summary(contrast_x, 'contrast_x', hm_name)
-    var_summary(contrast_hm, 'contrast_hm', hm_name)
     hm_large = contrast_hm * tf.image.resize_images(hm, [in_height, in_width])
     img_plus_all_joints = contrast_x * x  # init before adding joints' hms in the loop
     for joint_id, joint_name in enumerate(joint_ids):

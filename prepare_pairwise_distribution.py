@@ -29,7 +29,7 @@ def compute_pairwise_distribution(joint, cond_j):
     This computes a single histogram for a pair of (joint, cond_joint), and applies gaussian smooth 
     :param joint: e.g. 'lsho'
     :param cond_j: e.g. 'nose'
-    :return: 180 x 120 pairwise distribution
+    :return: 120 x 180 pairwise distribution
     """
     hp_height = y_test.shape[1]
     hp_width = y_test.shape[2]
@@ -41,7 +41,7 @@ def compute_pairwise_distribution(joint, cond_j):
         img_cj = np.reshape(y_test[i, :, :, joint_ids.index(cond_j)], (y_test.shape[1], y_test.shape[2]))
         xj, yj = np.where(img_j == np.max(img_j))
         xcj, ycj = np.where(img_cj == np.max(img_cj))
-        pd[hp_height+(xj-xcj), hp_width+(yj-ycj)] = pd[hp_height+(xj-xcj), hp_width+(yj-ycj)] + 1  # count for the histgram
+        pd[hp_height+(xj-xcj), hp_width+(yj-ycj)] += 1  # count for the histgram
     pd = pd / np.float32(np.sum(pd))
     pd = signal.convolve2d(pd, kernel, mode='same', boundary='fill', fillvalue=0)
     return pd
