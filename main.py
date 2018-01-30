@@ -244,7 +244,7 @@ tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 # img_tb_from, img_tb_to = 450, 465
-img_tb_from, img_tb_to = 50, 65
+img_tb_from, img_tb_to = 70, 85  # 50, 65
 n_eval_ex = 500
 
 n_joints = 9
@@ -253,7 +253,7 @@ x_train, y_train, x_test, y_test = get_dataset()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 if debug:
-    n_train, n_test = 70, 70  # for debugging purposes we take only a small subset
+    n_train, n_test = 100, 100  # for debugging purposes we take only a small subset
     x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
 # Main hyperparameters
 n_epochs = 15
