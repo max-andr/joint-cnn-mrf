@@ -41,11 +41,12 @@ def run_summary(sess, writer, tb_op, cur_iter, feed_dict):
     writer.add_summary(summary, cur_iter)
 
 
-def main_summaries(grads_vars, mse_pd, mse_sm, det_rate):
+def main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm):
     with tf.name_scope('main'):
         tf.summary.scalar('mse_part_detector', mse_pd)
         tf.summary.scalar('mse_spatial_model', mse_sm)
-        tf.summary.scalar('det_rate', det_rate)
+        tf.summary.scalar('det_rate', det_rate_pd)
+        tf.summary.scalar('det_rate', det_rate_sm)
         # Add histograms for gradients (only for weights, not biases)
         for grad, var in grads_vars:
             if 'weights' in var.op.name:

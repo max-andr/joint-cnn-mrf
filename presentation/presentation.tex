@@ -281,6 +281,23 @@
     \end{frame}
     
     
+    
+    
+    \begin{frame}[t]
+    	\frametitle{Pairwise Potentials}
+    	\begin{itemize}
+    		\item Simple \red{$\mathcal{N}(\mu, \Sigma)$} doesn’t fit all the cases! (especially with diagonal $\Sigma$!) \\
+    		\item We can learn this distribution in a non-parametric way (parametrized by 180x120 heat maps of pairwise compatibilities) by \blue{backprop}
+    	\end{itemize}
+    	\begin{center}
+    		\begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
+    			\includegraphics[scale=0.28]{pairwise_po.png} \\
+    			\scriptsize We can use empirical histogram of joint displacements as \blue{good init}. Source: YF and MA.
+    		\end{figure}
+    	\end{center}
+    \end{frame}
+    
+    
     \begin{frame}[t]
     	\frametitle{Spatial Model as a trainable PGM}
     	\begin{center}
@@ -307,6 +324,8 @@
     	\end{flushleft}
     \end{frame}
     
+   
+    
 
 	\begin{frame}[t]
         \frametitle{Inference in the fully connected PGM}
@@ -320,22 +339,6 @@
             \scriptsize Source: YF, MA + "Joint Training of a CNN and a Graphical Model for HPE".
             \end{figure}
         \end{center}
-    \end{frame}
-    
-    
-    
-    \begin{frame}[t]
-    	\frametitle{Pairwise Potentials}
-    	\begin{itemize}
-    		\item Simple \red{$\mathcal{N}(\mu, \Sigma)$} doesn’t fit all the cases! (especially with diagonal $\Sigma$!) \\
-    		\item We can learn this distribution in a non-parametric way (parametrized by 180x120 heat maps of pairwise compatibilities) by \blue{backprop}
-    	\end{itemize}
-    	\begin{center}
-    		\begin{figure}[htbp] % htbp stand for "here", "top", "bottom", "page"
-    			\includegraphics[scale=0.28]{pairwise_po.png} \\
-    			\scriptsize We can use empirical histogram of joint displacements as \blue{good init}. Source: YF and MA.
-    		\end{figure}
-    	\end{center}
     \end{frame}
 
 

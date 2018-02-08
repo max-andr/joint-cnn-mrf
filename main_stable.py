@@ -91,18 +91,17 @@ def mrf_fixed(heat_map, pairwise_energies):
     delta = 10 ** -6  # for numerical stability
     heat_map_hat = []
     for joint_id, joint_name in enumerate(joint_names):
-        with tf.variable_scope(joint_name):
-            hm = heat_map[:, :, :, joint_id:joint_id + 1]
-            hm = batch_norm(hm)
-            marginal_energy = tf.log(relu_pos(hm))  # heat_map: batch_size x 90 x 60 x 1
-            for cond_joint in joint_dependence[joint_name]:
-                cond_joint_id = np.where(joint_names == cond_joint)[0][0]
-                prior = tf.nn.softplus(pairwise_energies[joint_name + '_' + cond_joint])
-                likelihood = relu_pos(heat_map[:, :, :, cond_joint_id:cond_joint_id + 1])
-                bias = tf.nn.softplus(pairwise_biases[joint_name + '_' + cond_joint])
+        hm = heat_map[:, :, :, joint_id:joint_id + 1]
+        hm = batch_norm(hm)
+        marginal_energy = tf.log(relu_pos(hm))  # heat_map: batch_size x 90 x 60 x 1
+        for cond_joint in joint_dependence[joint_name]:
+            cond_joint_id = np.where(joint_names == cond_joint)[0][0]
+            prior = tf.nn.softplus(pairwise_energies[joint_name + '_' + cond_joint])
+            likelihood = relu_pos(heat_map[:, :, :, cond_joint_id:cond_joint_id + 1])
+            bias = tf.nn.softplus(pairwise_biases[joint_name + '_' + cond_joint])
 
-                marginal_energy += tf.log(conv_mrf(prior, likelihood) + bias + delta)
-            heat_map_hat.append(marginal_energy)
+            marginal_energy += tf.log(conv_mrf(prior, likelihood) + bias + delta)
+        heat_map_hat.append(marginal_energy)
     return tf.stack(heat_map_hat, axis=3)[:, :, :, :, 0]
 
 
@@ -130,18 +129,17 @@ def weight_variable(shape, fc=False):
         n_in = shape[0]
         n_out = shape[1]
     initial = tf.truncated_normal(shape, stddev=np.sqrt(2.0 / n_in))
-    # print(shape)
     return tf.get_variable('weights', initializer=initial)
 
 
 def bias_variable(shape, init=0.0, name='biases'):
     """bias_variable generates a bias variable of a given shape."""
     initial = tf.constant(init, shape=shape)
-    return tf.get_variable(name, initializer=initial)
+    return tf.get_variable(name, initial)
 
 
 def conv_layer(x, size, stride, n_in, n_out, name, last_layer=False):
-    with tf.variable_scope(name):
+    with tf.name_scope(name):
         w = weight_variable([size, size, n_in, n_out])
         b = bias_variable([n_out])
         pre_activ = conv2d(x, w, stride) + b
@@ -207,6 +205,27 @@ def mean_squared_error(hm1, hm2):
     return tf.reduce_mean((hm1 - hm2) ** 2) * hm_height * hm_width * n_joints
 
 
+def tower_loss(scope, logits, labels):
+    """Calculate the total loss on a single tower.
+      Args:
+        scope: unique prefix string identifying the CIFAR tower, e.g. 'tower_0'
+        images: Images. 4D tensor of shape [batch_size, height, width, 3].
+        labels: Labels. 1D tensor of shape [batch_size].
+      Returns:
+         Tensor of shape [] containing the total loss for a batch of data
+      """
+    # Build the portion of the Graph calculating the losses. Note that we will
+    # assemble the total_loss using a custom function below.
+    _ = mean_squared_error(logits, labels)
+
+    # Assemble all of the losses for the current tower only.
+    losses = tf.get_collection('losses', scope)
+
+    # Calculate the total loss for the current tower.
+    total_loss = tf.add_n(losses, name='total_loss')
+    return total_loss
+
+
 def average_gradients(tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
       Note that this function provides a synchronization point across all towers.
@@ -243,20 +262,14 @@ def average_gradients(tower_grads):
     return average_grads
 
 
-def avg_tensor_list(tensor_list):
-    tensors = tf.stack(axis=0, values=tensor_list)
-    return tf.reduce_mean(tensors, axis=0)
-
-
 def eval_error(X_np, Y_np, sess, batch_size):
     """Get all predictions for a dataset by running it in small batches."""
     n_batches = len(X_np) // batch_size
-    mse_pd_val, mse_sm_val, det_rate_pd_val, det_rate_sm_val = 0.0, 0.0, 0.0, 0.0
+    mse_pd_val, mse_sm_val = 0.0, 0.0
     for batch_x, batch_y in get_next_batch(X_np, Y_np, batch_size):
-        v1, v2, v3, v4 = sess.run([mse_pd, mse_sm, det_rate_pd, det_rate_sm], feed_dict={x_in: batch_x, y_in: batch_y, flag_train: False})
-        mse_pd_val, mse_sm_val = mse_pd_val + v1, mse_sm_val + v2
-        det_rate_pd_val, det_rate_sm_val = det_rate_pd_val + v3, det_rate_sm_val + v4
-    return mse_pd_val / n_batches, mse_sm_val / n_batches, det_rate_pd_val / n_batches, det_rate_sm_val / n_batches
+        val1, val2 = sess.run([mse_pd, mse_sm], feed_dict={x_in: batch_x, y_in: batch_y, flag_train: False})
+        mse_pd_val, mse_sm_val = mse_pd_val + val1, mse_sm_val + val2
+    return mse_pd_val / n_batches, mse_sm_val / n_batches
 
 
 def spatial_softmax(hm):
@@ -275,8 +288,8 @@ def get_dataset():
     return x_train, y_train, x_test, y_test
 
 
-gpus = [0, 1, 2, 3, 4, 5, 6, 7]
-gpu_number, gpu_memory = '0', 0.3
+gpus = list(range(8))
+gpu_number, gpu_memory = '0', 0.6
 debug = True
 train, restore_model, best_model_name = True, False, '2018-01-29 15:24:39'
 model_path = 'models_ex'
@@ -288,19 +301,20 @@ tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 # img_tb_from, img_tb_to = 450, 465
-img_tb_from, img_tb_to = 70, 86  # 50, 65
-n_eval_ex = 128
+img_tb_from, img_tb_to = 70, 85  # 50, 65
+n_eval_ex = 500
 
 n_joints = 9
+n_pairs = 8
 x_train, y_train, x_test, y_test = get_dataset()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 if debug:
-    n_train, n_test = 256, 128  # for debugging purposes we take only a small subset
+    n_train, n_test = 4000, 100  # for debugging purposes we take only a small subset
     x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
 # Main hyperparameters
-n_epochs = 15
-batch_size = 8
+n_epochs = 100
+batch_size = 10
 lmbd = 0.00000
 lr, optimizer = 0.001, 'adam'  # So far best without BN: 0.001, 'adam'
 n_updates_total = n_epochs * n_train // batch_size
@@ -310,9 +324,7 @@ lr_decay_coefs = [lr, lr / 2, lr / 5, lr / 10]
 with open('pairwise_distribution.pickle', 'rb') as handle:
     pairwise_distr_np = pickle.load(handle)
 
-graph = tf.Graph()
-update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-with graph.as_default(), tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
     x_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
     pairwise_energies, pairwise_biases = {}, {}
     for joint in joint_names:
@@ -320,8 +332,8 @@ with graph.as_default(), tf.device('/cpu:0'):
             joint_key = joint + '_' + cond_joint
             tensor = tf.convert_to_tensor(pairwise_distr_np[joint_key], dtype=tf.float32)
             pairwise_energy_jj = tf.reshape(tensor, [1, tensor.shape[0].value, tensor.shape[1].value, 1])
-            pairwise_energies[joint_key] = tf.get_variable('energy_' + joint_key, initializer=pairwise_energy_jj)
-            pairwise_biases[joint_key] = bias_variable([1, hm_height, hm_width, 1], 0.0001, 'bias_' + joint_key)
+            pairwise_energies[joint_key] = tf.get_variable('energy_'+joint_key, initializer=pairwise_energy_jj)
+            pairwise_biases[joint_key] = bias_variable([1, hm_height, hm_width, 1], 0.0001, 'bias_'+joint_key)
     y_in = tf.placeholder(tf.float32, [None, hm_height, hm_width, n_joints], name='heat_map')
     flag_train = tf.placeholder(tf.bool, name='is_training')
 
@@ -329,78 +341,79 @@ with graph.as_default(), tf.device('/cpu:0'):
 
     lr_tf = tf.train.piecewise_constant(n_iters_tf, lr_decay_n_updates, lr_decay_coefs)
 
-    # Data augmentation: we apply the same random transformations both to images and heat maps
-    # x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x_in, y_in), lambda: (x_in, y_in))
-    x_batch, hm_target_batch = x_in, y_in
-
-    if optimizer == 'adam':
-        opt = tf.train.AdamOptimizer(lr_tf)
-    elif optimizer == 'momentum':
-        opt = tf.train.MomentumOptimizer(learning_rate=lr_tf, momentum=0.9)
-    else:
-        raise Exception('wrong optimizer')
 
 
     # Calculate the gradients for each model tower.
-    tower_grads, losses, det_rates_pd, det_rates_sm, hms_pred_pd, hms_pred_sm = [], [], [], [], [], []
-    with tf.variable_scope(tf.get_variable_scope()), tf.control_dependencies(update_ops):
-        for i in range(len(gpus)):
-            with tf.device('/gpu:%d' % i), tf.name_scope('tower_%d' % i) as scope:
-                # Dequeues one batch for the GPU
-                x, hm_target = x_batch[i:i + 1], hm_target_batch[i:i + 1]
-                # Calculate the loss for one tower of the CIFAR model. This function
-                # constructs the entire CIFAR model but shares the variables across all towers.
+    tower_grads = []
+    with tf.variable_scope(tf.get_variable_scope()):
+      for i in range(len(gpus)):
+        with tf.device('/gpu:%d' % i):
+          with tf.name_scope('%s_%d' % (cifar10.TOWER_NAME, i)) as scope:
+            # Dequeues one batch for the GPU
+            image_batch, label_batch = batch_queue.dequeue()
+            # Calculate the loss for one tower of the CIFAR model. This function
+            # constructs the entire CIFAR model but shares the variables across
+            # all towers.
+            loss = tower_loss(scope, image_batch, label_batch)
 
-                # The whole heat map prediction model is here
-                hm_pred_pd_logit = model(x, n_joints, debug)
-                hm_pred_pd = spatial_softmax(hm_pred_pd_logit)
-                hms_pred_pd.append(hm_pred_pd)
+            # Reuse variables for the next tower.
+            tf.get_variable_scope().reuse_variables()
 
-                hm_pred_sm_logit = mrf_fixed(hm_pred_pd, pairwise_energies)
-                hm_pred_sm = spatial_softmax(hm_pred_sm_logit)
-                hms_pred_sm.append(hm_pred_sm)
+            # Retain the summaries from the final tower.
+            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-                with tf.name_scope('loss'):
-                    mse_pd = mean_squared_error(hm_pred_pd, hm_target)
-                    mse_sm = mean_squared_error(hm_pred_sm, hm_target)
-                    loss_tower = mse_pd + mse_sm + lmbd * weight_decay(var_pattern='weights')
-                    losses.append(loss_tower)
+            # Calculate the gradients for the batch of data on this CIFAR tower.
+            grads = opt.compute_gradients(loss)
 
-                with tf.name_scope('evaluation'):
-                    det_rates_pd.append(evaluation.detection_rate(hm_pred_pd, hm_target, normalized_radius=10))
-                    det_rates_sm.append(evaluation.detection_rate(hm_pred_sm, hm_target, normalized_radius=10))
-
-                # Reuse variables for the next tower.
-                tf.get_variable_scope().reuse_variables()
-
-                # Calculate the gradients for the batch of data on this CIFAR tower.
-                grads_vars_in_tower = opt.compute_gradients(loss_tower)
-
-                # TODO: maybe merge activation summaries
-
-                # Keep track of the gradients across all towers.
-                tower_grads.append(grads_vars_in_tower)
+            # Keep track of the gradients across all towers.
+            tower_grads.append(grads)
 
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
-    grads_vars = average_gradients(tower_grads)
-    loss = avg_tensor_list(losses)
-    det_rate_pd = avg_tensor_list(det_rates_pd)
-    det_rate_sm = avg_tensor_list(det_rates_sm)
-    hms_pred_pd = tf.stack(hms_pred_pd, axis=0)
-    hms_pred_sm = tf.stack(hms_pred_sm, axis=0)
+    grads = average_gradients(tower_grads)
+
+
+
+    # Data augmentation: we apply the same random transformations both to images and heat maps
+    # x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x_in, y_in), lambda: (x_in, y_in))
+    x, hm_target = x_in, y_in
+
+    # The whole heat map prediction model is here
+    hm_pred_pd_logit = model(x, n_joints, debug)
+    hm_pred_pd = spatial_softmax(hm_pred_pd_logit)
+
+    hm_pred_sm_logit = mrf_fixed(hm_pred_pd, pairwise_energies)
+    hm_pred_sm = spatial_softmax(hm_pred_sm_logit)
+
+    with tf.name_scope('loss'):
+        mse_pd = mean_squared_error(hm_pred_pd, hm_target)
+        mse_sm = mean_squared_error(hm_pred_sm, hm_target)
+        loss = mse_pd + mse_sm + lmbd * weight_decay(var_pattern='weights')
+
+
 
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    train_step = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
+    with tf.control_dependencies(update_ops):
+        if optimizer == 'adam':
+            opt = tf.train.AdamOptimizer(lr_tf)
+        elif optimizer == 'momentum':
+            opt = tf.train.MomentumOptimizer(learning_rate=lr_tf, momentum=0.9)
+        else:
+            raise Exception('wrong optimizer')
+        grads_vars = opt.compute_gradients(loss)
+        train_step = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
 
-    tf.summary.image('input', x_batch, 30)
+    with tf.name_scope('evaluation'):
+        det_rate = 0  # evaluation.detection_rate(hm_pred, hm_target, normalized_radius=10)
+
+    tf.summary.image('input', x, 30)
     for key in pairwise_energies:
         tf.summary.image('pairwise_potential_' + key, pairwise_energies[key], 30)
         tf.summary.image('pairwise_biases_' + key, pairwise_biases[key], 30)
         tb.var_summary(pairwise_energies[key], 'pairwise_energies_' + key)
         tb.var_summary(pairwise_biases[key], 'pairwise_biases_' + key)
-    tb.main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm)
-    tb.show_img_plus_hm(x, hm_target_batch, joint_names, in_height, in_width, 'target')
+    tb.main_summaries(grads_vars, mse_pd, mse_sm, det_rate)
+    tb.show_img_plus_hm(x, hm_target, joint_names, in_height, in_width, 'target')
     tb.show_img_plus_hm(x, hm_pred_pd, joint_names, in_height, in_width, 'pred_part_detector')
     tb.show_img_plus_hm(x, hm_pred_sm, joint_names, in_height, in_width, 'pred_spatial_model')
 
@@ -411,9 +424,9 @@ with graph.as_default(), tf.device('/cpu:0'):
 
     saver = tf.train.Saver()
 
-gpu_options = tf.GPUOptions(visible_device_list=str(gpus)[1:-1], per_process_gpu_memory_fraction=gpu_memory)
+gpu_options = tf.GPUOptions(visible_device_list=gpu_number, per_process_gpu_memory_fraction=gpu_memory)
 config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
-with tf.Session(config=config, graph=graph) as sess:
+with tf.Session(config=config) as sess:
     if not restore_model:
         sess.run(tf.global_variables_initializer())
     else:
@@ -431,11 +444,10 @@ with tf.Session(config=config, graph=graph) as sess:
     tb.run_summary(sess, test_writer, tb_merged, 0,
                    feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
                               flag_train: False})
-    test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
-    train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-    print('Epoch: {:d}  test_dr_pd {:.5f}  test_dr_sm {:.5f}  test_mse_pd {:.5f}  test_mse_sm {:.5f}  '
-          'train_dr_pd {:.5f}  train_dr_sm {:.5f}  train_mse_pd {:.5f}  train_mse_sm {:.5f}'.format(
-            0, test_dr_pd, test_dr_sm, test_mse_pd, test_mse_sm, train_dr_pd, train_dr_sm, train_mse_pd, train_mse_sm))
+    test_mse_pd, test_mse_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
+    train_mse_pd, train_mse_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
+    print('Epoch: {:d}  test_mse_pd: {:.5f}  test_mse_sm: {:.5f}  train_mse_pd: {:.5f}  train_mse_sm: {:.5f}'.format(
+            0, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
 
     if train:
         global_iter = 0
@@ -456,11 +468,10 @@ with tf.Session(config=config, graph=graph) as sess:
                            feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
                                       flag_train: False})
             # TODO: eval on the whole train/test
-            test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
-            train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-            print('Epoch: {:d}  test_dr_pd {:.5f}  test_dr_sm {:.5f}  test_mse_pd {:.5f}  test_mse_sm {:.5f}  '
-                  'train_dr_pd {:.5f}  train_dr_sm {:.5f}  train_mse_pd {:.5f}  train_mse_sm {:.5f}'.format(
-                    epoch, test_dr_pd, test_dr_sm, test_mse_pd, test_mse_sm, train_dr_pd, train_dr_sm, train_mse_pd, train_mse_sm))
+            test_mse_pd, test_mse_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
+            train_mse_pd, train_mse_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
+            print('Epoch: {:d}  test_mse_pd: {:.5f}  test_mse_sm: {:.5f}  train_mse_pd: {:.5f}  train_mse_sm: {:.5f}'.
+                  format(epoch, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         saver.save(sess, model_path + '/' + cur_timestamp)
