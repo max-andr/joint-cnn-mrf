@@ -5,7 +5,7 @@ This file is to test if the data.py prepare the data correctly
 
 """
 
-n_joint = 10
+n_joint = 9
 y_test = np.load('y_test_flic.npy')
 x_test = np.load('x_test_flic.npy')
 print('x_test shape is', x_test.shape)

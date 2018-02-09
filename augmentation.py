@@ -2,22 +2,38 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 
+joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose', 'torso']
+
 def get_dataset():
     x_test = np.load('x_test_flic.npy')
     y_test = np.load('y_test_flic.npy')
     return x_test, y_test
 
+def random_flip(img1, img2):
+    """
+    :param img1: is the image itself 
+    :param img2: is the heat map, 60 x 90 x 10
+    """
+    img1 = tf.image.flip_left_right(img1)
+    img2 = tf.image.flip_left_right(img2)
+    img2 = tf.concat([img2[:, :, 3:6], img2[:, :, 0:3], img2[:, :, 7:8], img2[:, :, 6:7], img2[:, :, 8:10]], axis=2)
+    return img1, img2
+
 def horizontal_flip(img1, img2):
+    """
+    :param img1: is the image itself 
+    :param img2: is the heat map
+    """
     p = tf.random_uniform([1])[0]
-    img1, img2 = tf.cond(tf.greater(p, 0.5),
-                         lambda: (tf.image.flip_left_right(img1), tf.image.flip_left_right(img2)),
+    img1, img2 = tf.cond(tf.greater(p, 0.0001),
+                         lambda: random_flip(img1, img2),
                          lambda: (img1, img2))
     return img1, img2
 
 def random_rotation(img1, img2, max_rotate_angle):
     rand_angles = tf.random_uniform([1], minval=-max_rotate_angle, maxval=max_rotate_angle)[0]
-    img1 = tf.contrib.image.rotate(img1, rand_angles)
-    img2 = tf.contrib.image.rotate(img2, rand_angles)
+    img1 = tf.contrib.image.rotate(img1, rand_angles, interpolation='BILINEAR')
+    img2 = tf.contrib.image.rotate(img2, rand_angles, interpolation='BILINEAR')
     return img1, img2
 
 # def crop(img1, img2):
@@ -57,6 +73,7 @@ def reshape_img(img_ori, i):
     return img
 
 def reshape_hm(hm, i):
+    """ 8-th is the nose"""
     hm = hm[i, :, :, 0]
     print(hm.shape)
     hm = np.reshape(hm, (hm.shape[0], hm.shape[1]))
@@ -84,7 +101,7 @@ def show_img_augmentation(X, Y, sess):
 x_test, y_test = get_dataset()
 x_test = x_test[0:10, :, :, :]
 y_test = y_test[0:10, :, :, :]
-n_joints = 9
+n_joints = 10
 n_train, in_height, in_width, n_colors = x_test.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 x_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
