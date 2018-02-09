@@ -51,7 +51,7 @@ def compute_pairwise_distribution(joint, cond_j):
 pairwise_distribution = {}
 for joint in joint_ids:
     for cond_j in joint_ids:
-        if cond_j in joint_dependece[joint]:
+        if cond_j is not joint:
             print(joint + '_' + cond_j)
             pairwise_distribution[joint + '_' + cond_j] = compute_pairwise_distribution(joint, cond_j)
 
@@ -62,7 +62,7 @@ for joint in joint_ids:
 # plt.figure(2)
 # plt.imshow(np.uint8(pairwise_distribution['rhip_nose'])*255)
 # plt.show()
-
+print('number of pairs is: ', len(pairwise_distribution))
 
 with open('pairwise_distribution.pickle', 'wb') as handle:
     pickle.dump(pairwise_distribution, handle, protocol=pickle.HIGHEST_PROTOCOL)
