@@ -39,6 +39,6 @@ plt.imshow((img))
 plt.figure(2)
 plt.imshow((hmap))
 plt.figure(3)
-plt.imshow((pairwise_distribution['relb_rwri']))
+plt.imshow((pairwise_distribution['lwri_torso']))
 plt.show()
 
