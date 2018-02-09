@@ -5,12 +5,12 @@ This file is to test if the data.py prepare the data correctly
 
 """
 
-n_joint = 9
+n_joint = 10
 y_test = np.load('y_test_flic.npy')
 x_test = np.load('x_test_flic.npy')
 print('x_test shape is', x_test.shape)
 i = np.random.randint(0, high=x_test.shape[0])
-# i = 655
+
 print('Show the %dth image and the heat map for nose:' % i)
 y_test = y_test.astype(np.float32)
 y_test = y_test / 256
@@ -28,17 +28,17 @@ for joint in range(n_joint):
     print(x, y)
     coords[:, joint] = [x, y]
 coords = coords * 8
-print(coords)
+print('coords:', coords)
 
 with open('pairwise_distribution.pickle', 'rb') as handle:
     pairwise_distribution = pickle.load(handle)
 
 import matplotlib.pyplot as plt
 plt.figure(1)
-plt.imshow(np.uint8(img))
+plt.imshow((img))
 plt.figure(2)
-plt.imshow(np.uint8(hmap))
+plt.imshow((hmap))
 plt.figure(3)
-plt.imshow(np.uint8(pairwise_distribution['relb_rwri']))
+plt.imshow((pairwise_distribution['relb_rwri']))
 plt.show()
 

@@ -15,7 +15,37 @@ y_train, y_test is [, 90, 60, 11], type = float32, you should divide it by 256 b
 
 There're 3987 for training and 1016 for testing
 """
-
+def creat_torso_hm(torsobox, kernel, temp, pad):
+    """
+    :param torsobox: is a 4 x 1 vector, (1st, 2st) is the loc of the top left corner of the box
+                    (3rd, 4th) is the bottom right corner of the box
+    """
+    coords = np.ndarray(shape=(2,), dtype=float)
+    coords[0] = (torsobox[0] + torsobox[2]) / 2  # maybe I need to exchange the coords0 and 1
+    coords[1] = (torsobox[1] + torsobox[3]) / 2
+    print(coords)
+    coords[0] = np.int(coords[0])
+    coords[1] = np.int(coords[1])
+    if coords[0] > 90:
+        coords[0] = 90
+    if coords[0] < 0:
+        coords[0] = 0
+    if coords[1] > 60:
+        coords[1] = 60
+    if coords[1] < 0:
+        coords[1] = 0
+    print(coords)
+    heat_map = np.zeros([90, 60], dtype=np.float32)  # 90 by 60
+    heat_map = np.lib.pad(heat_map, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
+    # print(heat_map.shape)
+    # print(data_FLIC[i][2][:, id])
+    # print(i, joint)
+    coords = coords + pad
+    heat_map[np.int(coords[0] - temp):np.int(coords[0] + temp + 1),
+    np.int(coords[1] - temp):np.int(coords[1] + temp + 1)] = kernel
+    # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
+    heat_map = heat_map[pad:pad + 90, pad:pad + 60]
+    return heat_map
 
 def downsample_cube(myarr, factor, ignoredim=0):
     """
@@ -52,6 +82,8 @@ kernel = coefs.T @ coefs
 temp = np.int((len(kernel) - 1) / 2)
 print(temp)
 pad = 5  # use padding to avoid the exceeding of the boundary
+
+
 
 ### This part is for x_train
 x_train = []
@@ -114,6 +146,7 @@ for i in train_index:
         heat_map = heat_map[pad:pad + 90, pad:pad + 60]
         print(heat_map.shape)
         hmap.append(heat_map)
+    hmap.append(creat_torso_hm(data_FLIC[i][6][0]/8, kernel, temp, pad))
     hmap = np.array(hmap)
     hmap = hmap.swapaxes(0, 2)
     x_train_hmap.append(hmap)
@@ -152,9 +185,11 @@ for i in test_index:
         heat_map = heat_map[pad:pad + 90, pad:pad + 60]
         print(heat_map.shape)
         hmap.append(heat_map)
+    hmap.append(creat_torso_hm(data_FLIC[i][6][0]/8, kernel, temp, pad))
     hmap = np.array(hmap)
     hmap = hmap.swapaxes(0, 2)
     x_test_hmap.append(hmap)
 x_test_hmap = np.array(x_test_hmap)
 print(x_test_hmap.shape)
 np.save('y_test_flic', x_test_hmap)
+
