@@ -64,5 +64,5 @@ for joint in joint_ids:
 # plt.show()
 print('number of pairs is: ', len(pairwise_distribution))
 
-with open('pairwise_distribution_train.pickle', 'wb') as handle:
+with open('pairwise_distribution.pickle', 'wb') as handle:
     pickle.dump(pairwise_distribution, handle, protocol=pickle.HIGHEST_PROTOCOL)
