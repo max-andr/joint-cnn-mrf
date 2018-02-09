@@ -49,7 +49,7 @@ def main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm):
         tf.summary.scalar('det_rate', det_rate_sm)
         # Add histograms for gradients (only for weights, not biases)
         for grad, var in grads_vars:
-            if 'weights' in var.op.name:
+            if 'weights' in var.op.name or 'energy' in var.op.name:
                 tf.summary.histogram(var.op.name + '/gradients', grad)
                 grad_l2_norm = tf.norm(tf.reshape(grad, [-1]))
                 tf.summary.scalar(var.op.name + '/gradients', grad_l2_norm)

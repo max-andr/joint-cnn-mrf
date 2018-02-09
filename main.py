@@ -24,7 +24,7 @@ dict = {'lsho':   0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhi
 np.set_printoptions(suppress=True, precision=4)
 
 
-def model(x, n_joints, debug=False):
+def model(x, n_joints):
     """
     A computational graph for CNN part.
     :param x1: full resolution image batch_size x 360 x 240 x 3
@@ -33,9 +33,9 @@ def model(x, n_joints, debug=False):
     """
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_bottleneck, n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 64, 64, 128, 256, 256, 512
-    # if debug:
-    #     n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = \
-    #         n_filters1 // 8, n_filters2 // 8, n_filters3 // 8, n_filters4 // 8, n_filters5 // 8
+    if debug:
+        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = \
+            n_filters1 // 4, n_filters2 // 4, n_filters3 // 4, n_filters4 // 4, n_filters5 // 4
 
     x1 = x
     x2 = tf.image.resize_images(x, [int(x.shape[1]) // 2, int(x.shape[2]) // 2])
@@ -77,7 +77,7 @@ def conv_mrf(A, B):
     return C
 
 
-def mrf_fixed(heat_map, pairwise_energies):
+def spatial_model(heat_map, pairwise_energies):
     """
     from Learning Human Pose Estimation Features with Convolutional Networks
     :param heat_map: is produced by model as the unary distributions: batch_size x 90 x 60 x n_joints
@@ -88,18 +88,22 @@ def mrf_fixed(heat_map, pairwise_energies):
     def relu_pos(x, eps=0.00001):
         return tf.maximum(x, eps)
 
+    def softplus(x):
+        softplus_alpha = 5
+        return 1 / softplus_alpha * tf.nn.softplus(softplus_alpha * x)
+
     delta = 10 ** -6  # for numerical stability
     heat_map_hat = []
     for joint_id, joint_name in enumerate(joint_names):
         with tf.variable_scope(joint_name):
             hm = heat_map[:, :, :, joint_id:joint_id + 1]
             hm = batch_norm(hm)
-            marginal_energy = tf.log(relu_pos(hm))  # heat_map: batch_size x 90 x 60 x 1
+            marginal_energy = tf.log(softplus(hm))  # heat_map: batch_size x 90 x 60 x 1
             for cond_joint in joint_dependence[joint_name]:
                 cond_joint_id = np.where(joint_names == cond_joint)[0][0]
-                prior = tf.nn.softplus(pairwise_energies[joint_name + '_' + cond_joint])
-                likelihood = relu_pos(heat_map[:, :, :, cond_joint_id:cond_joint_id + 1])
-                bias = tf.nn.softplus(pairwise_biases[joint_name + '_' + cond_joint])
+                prior = softplus(pairwise_energies[joint_name + '_' + cond_joint])
+                likelihood = heat_map[:, :, :, cond_joint_id:cond_joint_id + 1]
+                bias = softplus(pairwise_biases[joint_name + '_' + cond_joint])
 
                 marginal_energy += tf.log(conv_mrf(prior, likelihood) + bias + delta)
             heat_map_hat.append(marginal_energy)
@@ -173,7 +177,7 @@ def get_next_batch(X, Y, batch_size, shuffle=False):
     if shuffle:
         x_idx = np.random.permutation(len(X))[:n_batches * batch_size]
     else:
-        x_idx = np.arange(len(X))
+        x_idx = np.arange(len(X))[:n_batches * batch_size]
     for batch_idx in x_idx.reshape([n_batches, batch_size]):
         batch_x, batch_y = X[batch_idx], Y[batch_idx]
         yield batch_x, batch_y
@@ -275,9 +279,17 @@ def get_dataset():
     return x_train, y_train, x_test, y_test
 
 
-gpus = [0, 1, 2, 3, 4, 5, 6, 7]
-gpu_number, gpu_memory = '0', 0.3
-debug = True
+def get_pairwise_distr():
+    with open('pairwise_distribution.pickle', 'rb') as handle:
+        return pickle.load(handle)
+
+
+multi_gpu = True
+if multi_gpu:
+    gpus, gpu_memory = [0, 1, 2, 3, 4, 5, 6, 7], 0.3
+else:
+    gpus, gpu_memory = [0], 0.65
+debug = False
 train, restore_model, best_model_name = True, False, '2018-01-29 15:24:39'
 model_path = 'models_ex'
 time_start = time.time()
@@ -289,29 +301,26 @@ tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
 # img_tb_from, img_tb_to = 450, 465
 img_tb_from, img_tb_to = 70, 86  # 50, 65
-n_eval_ex = 128
+n_eval_ex = 2000
 
 n_joints = 9
 x_train, y_train, x_test, y_test = get_dataset()
+pairwise_distr_np = get_pairwise_distr()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 if debug:
-    n_train, n_test = 256, 128  # for debugging purposes we take only a small subset
+    n_train, n_test = 512, 128  # for debugging purposes we take only a small subset
     x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
 # Main hyperparameters
-n_epochs = 15
-batch_size = 8
-lmbd = 0.00000
+n_epochs = 30
+batch_size = 16
+lmbd = 0.000
 lr, optimizer = 0.001, 'adam'  # So far best without BN: 0.001, 'adam'
 n_updates_total = n_epochs * n_train // batch_size
 lr_decay_n_updates = [round(0.7 * n_updates_total), round(0.8 * n_updates_total), round(0.9 * n_updates_total)]
 lr_decay_coefs = [lr, lr / 2, lr / 5, lr / 10]
 
-with open('pairwise_distribution.pickle', 'rb') as handle:
-    pairwise_distr_np = pickle.load(handle)
-
 graph = tf.Graph()
-update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with graph.as_default(), tf.device('/cpu:0'):
     x_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
     pairwise_energies, pairwise_biases = {}, {}
@@ -340,23 +349,25 @@ with graph.as_default(), tf.device('/cpu:0'):
     else:
         raise Exception('wrong optimizer')
 
-
     # Calculate the gradients for each model tower.
     tower_grads, losses, det_rates_pd, det_rates_sm, hms_pred_pd, hms_pred_sm = [], [], [], [], [], []
-    with tf.variable_scope(tf.get_variable_scope()), tf.control_dependencies(update_ops):
+    mses_pd, mses_sm = [], []
+    imgs_per_gpu = batch_size // len(gpus)
+    with tf.variable_scope(tf.get_variable_scope()):
         for i in range(len(gpus)):
             with tf.device('/gpu:%d' % i), tf.name_scope('tower_%d' % i) as scope:
                 # Dequeues one batch for the GPU
-                x, hm_target = x_batch[i:i + 1], hm_target_batch[i:i + 1]
+                id_from, id_to = i*imgs_per_gpu, i*imgs_per_gpu + imgs_per_gpu
+                x, hm_target = x_batch[id_from:id_to], hm_target_batch[id_from:id_to]
                 # Calculate the loss for one tower of the CIFAR model. This function
                 # constructs the entire CIFAR model but shares the variables across all towers.
 
                 # The whole heat map prediction model is here
-                hm_pred_pd_logit = model(x, n_joints, debug)
+                hm_pred_pd_logit = model(x, n_joints)
                 hm_pred_pd = spatial_softmax(hm_pred_pd_logit)
                 hms_pred_pd.append(hm_pred_pd)
 
-                hm_pred_sm_logit = mrf_fixed(hm_pred_pd, pairwise_energies)
+                hm_pred_sm_logit = spatial_model(hm_pred_pd, pairwise_energies)
                 hm_pred_sm = spatial_softmax(hm_pred_sm_logit)
                 hms_pred_sm.append(hm_pred_sm)
 
@@ -365,6 +376,8 @@ with graph.as_default(), tf.device('/cpu:0'):
                     mse_sm = mean_squared_error(hm_pred_sm, hm_target)
                     loss_tower = mse_pd + mse_sm + lmbd * weight_decay(var_pattern='weights')
                     losses.append(loss_tower)
+                    mses_pd.append(loss_tower)
+                    mses_sm.append(loss_tower)
 
                 with tf.name_scope('evaluation'):
                     det_rates_pd.append(evaluation.detection_rate(hm_pred_pd, hm_target, normalized_radius=10))
@@ -373,8 +386,10 @@ with graph.as_default(), tf.device('/cpu:0'):
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
 
-                # Calculate the gradients for the batch of data on this CIFAR tower.
-                grads_vars_in_tower = opt.compute_gradients(loss_tower)
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    # Calculate the gradients for the batch of data on this tower.
+                    grads_vars_in_tower = opt.compute_gradients(loss_tower)
 
                 # TODO: maybe merge activation summaries
 
@@ -387,10 +402,11 @@ with graph.as_default(), tf.device('/cpu:0'):
     loss = avg_tensor_list(losses)
     det_rate_pd = avg_tensor_list(det_rates_pd)
     det_rate_sm = avg_tensor_list(det_rates_sm)
-    hms_pred_pd = tf.stack(hms_pred_pd, axis=0)
-    hms_pred_sm = tf.stack(hms_pred_sm, axis=0)
+    mses_pd = avg_tensor_list(mses_pd)
+    mses_sm = avg_tensor_list(mses_sm)
+    hms_pred_pd = tf.concat(hms_pred_pd, axis=0)
+    hms_pred_sm = tf.concat(hms_pred_sm, axis=0)
 
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_step = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
 
     tf.summary.image('input', x_batch, 30)
@@ -400,9 +416,9 @@ with graph.as_default(), tf.device('/cpu:0'):
         tb.var_summary(pairwise_energies[key], 'pairwise_energies_' + key)
         tb.var_summary(pairwise_biases[key], 'pairwise_biases_' + key)
     tb.main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm)
-    tb.show_img_plus_hm(x, hm_target_batch, joint_names, in_height, in_width, 'target')
-    tb.show_img_plus_hm(x, hm_pred_pd, joint_names, in_height, in_width, 'pred_part_detector')
-    tb.show_img_plus_hm(x, hm_pred_sm, joint_names, in_height, in_width, 'pred_spatial_model')
+    tb.show_img_plus_hm(x_batch, hm_target_batch, joint_names, in_height, in_width, 'target')
+    tb.show_img_plus_hm(x_batch, hms_pred_pd, joint_names, in_height, in_width, 'pred_part_detector')
+    tb.show_img_plus_hm(x_batch, hms_pred_sm, joint_names, in_height, in_width, 'pred_spatial_model')
 
     tb_merged = tf.summary.merge_all()
     train_iters_writer = tf.summary.FileWriter(tb_train_iter)
@@ -433,9 +449,8 @@ with tf.Session(config=config, graph=graph) as sess:
                               flag_train: False})
     test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
     train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-    print('Epoch: {:d}  test_dr_pd {:.5f}  test_dr_sm {:.5f}  test_mse_pd {:.5f}  test_mse_sm {:.5f}  '
-          'train_dr_pd {:.5f}  train_dr_sm {:.5f}  train_mse_pd {:.5f}  train_mse_sm {:.5f}'.format(
-            0, test_dr_pd, test_dr_sm, test_mse_pd, test_mse_sm, train_dr_pd, train_dr_sm, train_mse_pd, train_mse_sm))
+    print('Epoch {:d}  test_dr {:.5f} {:.5f}  train_dr {:.5f} {:.5f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
+        format(0, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
 
     if train:
         global_iter = 0
@@ -458,9 +473,8 @@ with tf.Session(config=config, graph=graph) as sess:
             # TODO: eval on the whole train/test
             test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
             train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-            print('Epoch: {:d}  test_dr_pd {:.5f}  test_dr_sm {:.5f}  test_mse_pd {:.5f}  test_mse_sm {:.5f}  '
-                  'train_dr_pd {:.5f}  train_dr_sm {:.5f}  train_mse_pd {:.5f}  train_mse_sm {:.5f}'.format(
-                    epoch, test_dr_pd, test_dr_sm, test_mse_pd, test_mse_sm, train_dr_pd, train_dr_sm, train_mse_pd, train_mse_sm))
+            print('Epoch {:d}  test_dr {:.5f} {:.5f}  train_dr {:.5f} {:.5f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
+                  format(epoch, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         saver.save(sess, model_path + '/' + cur_timestamp)
@@ -474,7 +488,6 @@ print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 # TODO: set up PGM part: first try the star model without trainable weight, and then try the trainable MRF
 
 # TODO: show a principled plot of test MSE between PD and SM.
-# TODO: if joint training is not successful, try auxiliary classifier?
 
 # Things that are not super important
 # TODO: data: handle multiple people by incorporating an extra "torso-joint heatmap" (page 6)
@@ -488,6 +501,12 @@ print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 # TODO: a readme on how to run our code (1: download FLIC dataset, 2: data.py, 3: pariwise_distr.py, ...)
 
 """
+Structure:
+- Problem description
+- Your approach
+- Results / Interpretation
+
+
 To mention in the final report:
 - we do it much faster using BN
 - we use an auxiliary classifier (Inception style) to make both PD and SM perform well
@@ -503,6 +522,15 @@ On Fig. 5 they showed "a didactic example", which they most probably drew by han
 It would be very interesting to see the pairwise heatmaps obtained after backprop. We show them: ...
 Thus, our contribution is not only in practical implementation of the paper, but also in understanding what the proposed 
 model actually learns.
+
+Another contribution: we show how to perform joint training immediately with a single set of hps.
+
+softplus -> relu? no motivation why softplus is used
+
+
+Boring but important implementation detail: BN is not so efficient in multi-gpu training. 
+
+With Momentum the spatial model can't be properly trained. Thus adaptive learning rates (Adam).
 
 Interesting Q: how detection rate correlates with MSE?
 """
