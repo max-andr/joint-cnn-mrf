@@ -29,6 +29,7 @@
 \usepackage{amsmath}
 \usepackage{mathtools}
 \usepackage[absolute,overlay]{textpos}
+\usepackage{graphicx}
 \usepackage{bm}
 \usepackage[normalem]{ulem}
 \usepackage{cancel}
@@ -72,22 +73,353 @@
 
 
 \begin{document}
-\section{Exercise 5: Fan Yue (2564216) and Maksym Andriushchenko (2565540)}
-\red{\textbf{Small warning}: We did not use the Virtual Machine and installed all the packages from scratch! We had to modify 2 lines of code: 
-	\begin{enumerate}
-		\item np.zeros((360*k+1, 2)) -> np.zeros((int(360*k)+1, 2))
-		\item axarr[0].get\_axes().set\_aspect(1) -> axarr[0].axes.set\_aspect(1).
-	\end{enumerate}
-}
+	\begin{titlepage}
+		\newgeometry{margin=3cm}
+		\centering
+		\vspace*{\stretch{0.5}}
+		\Large \textbf{Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation}
+		\vspace{\stretch{0.5}}
+		\normalsize Maksym Andriushchenko \\
+		\normalsize 2565540 \\
+		\normalsize \& \\
+		\normalsize FAN Yue \\
+		\normalsize 2564216 \\
+		\vspace{\stretch{0.5}}
+		\normalsize Saarland Univ.
+	\end{titlepage}
 
+\newpage
+	\section{Abstract}
+%	\red{\textbf{Small warning}: We did not use the Virtual Machine and installed all the packages from scratch! We had to modify 2 lines of code:
+%		\begin{enumerate}
+%			\item np.zeros((360*k+1, 2)) -> np.zeros((int(360*k)+1, 2))
+%			\item axarr[0].get\_axes().set\_aspect(1) -> axarr[0].axes.set\_aspect(1).
+%		\end{enumerate}
+%	}
+	We address the problem of single person pose estimation from 2D images.
+	Our method is aspired from the paper Joint Training of a Convolutional Network and a Graphical Model for Human Pose
+	Estimation, the model is a combination of a CNN and a PGM trained end-to-end jointly. We reproduce the same results
+	of the authors and explore that with Batch Normalization, we achieve a faster convergence.
 
-\section{1 Aligning points in 2D with Procrustes}
+\newpage
+	\section{1. Problem Overview}
+
+\newpage
+	\section{2. Methods}
+\newpage
+	\section{3. Evaluation}
+\newpage
+	\section{4. Future work}
+\newpage
+	\begin{thebibliography}{}
+		\bibitem{cnn_pgm_for_hpe}
+		\href{https://arxiv.org/abs/1406.2984}
+		{Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation}
+
+		\bibitem{cnn_pgm_for_hpe}
+		\href{https://arxiv.org/abs/1312.7302}
+		{Learning Human Pose Estimation Features with Convolutional Networks}
+
+		\bibitem{cnn_pgm_for_hpe}
+		\href{https://homes.cs.washington.edu/~taskar/pubs/modec_cvpr13.pdf}
+		{Multimodal decomposable models for human pose estimation}
+	\end{thebibliography}
+\newpage
 \textbf{Question}: \textit{Find the optimal alignment between two ellipses. Debug until you achieve a good result!}
 
 It is already optimal. We only added scaling by multiplying point cloud by a scalar, which lead to the same scaling across all coordinates.
 
-test test
 
+\textbf{Question}: \textit{Try different ellipse rotations and scales. Does the method find the optimal solution for any scale, rotation and translation?}
+
+Yes. We can consider a few extreme cases and judge according to the residuals:
+\begin{itemize}
+	\item Scaled ellipse: scale=4, rotation=0, translation: (0, 0) => residuals 0.
+		
+	\item Translated ellipse: scale=1, rotation=0, translation: (2, 4) => residuals 0.
+		
+	\item Rotated ellipse: scale=1, rotation=pi/4, translation: (0, 0) => residuals 0.
+		
+	\item All transformations: scale=3, rotation=pi/4, translation: (2, 4) => residuals 0.
+\end{itemize}
+Since residuals are always 0, we can conclude that we have a perfect fit in each case.
+
+%
+%
+%\newpage
+%\section{2 Aligning points in 3D with Procrustes}
+%
+%\textbf{Question}: \textit{Try the procrustes algorithm on 3D point clouds by running align\_3D\_points.py. Debug until you achieve good results!}
+%
+%Here is an example:
+%
+%\begin{tabular}{cc}
+%	Before Procrustes algorithm & After Procrustes algorithm \\
+%	\includegraphics[width=0.5\textwidth]{img/2_random_transform_1.png} & \includegraphics[width=0.5\textwidth]{img/2_random_transform_2.png}
+%\end{tabular}
+%
+%
+%
+%
+%\newpage
+%\textbf{Question}: \textit{Fix the noise to 0.005. Try different rotation and scales. Does it find the optimal solution for any
+%scale, rotation and translation?}
+%
+%With $\sigma = 0.005$ yes, there is no problem to find the optimal transformation. Multiple runs of random transformations returned residuals value in range 0.01 - 0.02, which is quite small.
+%
+%
+%\textbf{Question}: \textit{For a given transformation, plot the error vs different levels of Gaussian noise, sigma = [0 - 0.01]. The error is defined as the sum of squared distances between points transformed source and target points (E in the course slides). How does the error increase with noise? Is the method robust to noise? Quantify the error with respect to the point cloud before you added the noise!}
+%
+%The error increases with some fluctuations with the magnitude that increases with increasing sigma. It can be explained by the fact that with higher sigma we have higher probability that random noise skews the fit towards some random direction.
+%
+%\includegraphics[width=1.0\textwidth]{img/2_error_vs_sigma.png}
+%
+%In our opinion, the method is robust to the given noise. Although the error grows with increasing the noise, the error is still small ($\approx 0.025$ with $\sigma=0.01$). If we visualize the result for the highest noise $\sigma=0.01$, then we can see that the fit of Procrustes algorithm is still very good.
+%
+%\begin{tabular}{cc}
+%	Before Procrustes algorithm with $\sigma=0.01$ & After Procrustes algorithm with $\sigma=0.01$ \\
+%	\includegraphics[width=0.5\textwidth]{img/2_noise_fit_1.png} & \includegraphics[width=0.5\textwidth]{img/2_noise_fit_2.png}
+%\end{tabular}
+%
+%Even if we try extremely high noise, e.g. $\sigma=1.0$, we still have quite good fit with only slight shift of the model towards some random direction. Interestingly, such high noise seems to destroy all shape information, but it's not a problem for Procrustes algorithm to perform an approximate match of 2 point clouds. Obviously, in this case the fit cannot be perfect, because 2 shapes are quite different. But nonetheless, Procrustes algorithm tries to do its best, which comes out to be an appropriate fit if we compare the true model with the base model without noise.
+%
+%\begin{tabular}{cc}
+%	Before Procrustes algorithm with $\sigma=1.0$ & After Procrustes algorithm with $\sigma=1.0$ \\
+%	\includegraphics[width=0.5\textwidth]{img/2_noise_fit_extreme_1.png} & \includegraphics[width=0.5\textwidth]{img/2_noise_fit_extreme_2.png}
+%\end{tabular}
+%
+%
+%
+%
+%\newpage
+%\textbf{Question}: \textit{Modify the Gaussian noise distribution: With probability P add the vector $\sigma \cdot (1, 1, 1)^T$ as outlier to the vertex i. Set sigma to 0.5 and visualize the resulting alignment.}
+%
+%We get an insightful picture if we compare transformed noisy model and transformed original model. The Procrustes algorithm still does what it is designed to do - finds the best match between the original and noisy model. But the original undistorted image concentrates its mass only on 1 part of the noisy model and thus applying the learned "optimal" transformation results in a poor fit
+%
+%\begin{tabular}{cc}
+%	Fitted noisy model ($p=0.8$) vs  &  Original model + fitted transform vs\\
+%	Original model + fitted transform  &  original model with random transform  \\
+%	\includegraphics[width=0.5\textwidth]{img/2_bad_noise.png} & \includegraphics[width=0.5\textwidth]{img/2_shifted_men.png}
+%\end{tabular}
+%
+%
+%\textbf{Question}:
+%\textit{1. Plot the error vs the probability P, P ranging from 0 to 1.}
+%
+%\begin{center}
+%	\includegraphics[width=0.8\textwidth]{img/2_error_vs_p.png}
+%\end{center}
+%
+%
+%\textbf{Question}:
+%\textit{2. How do the alignments degrade with outliers?}
+%
+%More outliers (higher P), bigger the error.
+%
+%
+%\textbf{Question}:
+%\textit{3. Is the method robust against this sort of noise? Why?}
+%
+%The Procrustes method isn't robust to this noise, because this noise has a non-zero expectation, but for second type of noise we have that its expectation $\mathbb{E}[\eta_i] = [\sigma p, \sigma p, \sigma p]^T$. Consider the Procrustes method under noise, it must solve the following problem:
+%\begin{align}
+%E^* = min_{s, R, t} \mathbb{E}[||s R \hat{x}_i + t - y_i||_2^2] = \\
+%min_{s, R, t} \mathbb{E}[||s R x_i + s R \eta_i + t - y_i||_2^2] = \\
+%min_{s, R, t} \mathbb{E}[||s R x_i + t - y_i||_2^2 - 2 \cdot (s R x_i + t - y_i)^T \cdot s R \eta_i + ||s R \eta_i||_2^2 ] = \\
+%min_{s, R, t} \mathbb{E}[||s R x_i + t - y_i||_2^2] - 2 s \cdot \mathbb{E}[(s R x_i + t - y_i)^T] x\cdot R \cdot \mathbb{E}[\eta_i] + \mathbb{E}[||s R \eta_i||_2^2] = \\
+%min_{s, R, t} \mathbb{E}[||s R x_i + t - y_i||_2^2] - 2 s \cdot \mathbb{E}[(s R x_i + t - y_i)^T] \cdot  R \cdot \mathbb{E}[\eta_i] + s^2 \cdot \mathbb{E}[||\eta_i||_2^2]
+%\end{align}
+%(we used linearity of expectation in (3) and (4), and independence of noise and data in (4))
+%
+%If $\mathbb{E}[\eta_i] = [0, 0, 0]^T$, then second term vanishes. If not, we have distorted results by the second term, and the amount of distortions is governed by $\mathbb{E}[\eta_i]$, so higher p, greater the distortion. Note, that in both cases we have small fluctuations due to the last term.
+%
+%
+%\textbf{Question}:
+%\textit{4. How would you modify the method to make it robust to such outliers?}
+%
+%On the previous tutorial we discussed that this question doesn't make much sense and these shifted points cannot be counted as outliers.
+%
+%
+%\textbf{Question}:
+%\textit{5. With probability 0.2 plot the error against different sigma levels.}
+%
+%\includegraphics[width=1.0\textwidth]{img/2_error_vs_sigmacoef.png}
+%
+%We can notice the same linear trend both with respect to p and with respect to sigma.
+%
+%
+%
+%\newpage
+%\textbf{Question}: \textit{Does procrustes produce a satisfactory alignment between the two shapes? Why?}
+%
+%The quality is satisfactory, and it cannot be made perfect using similarity transform. Obviously, feets, fingers and head are slightly off, but it's because the shapes are different and achieving 0 minimum (perfect fit) is not possible with this method.
+%\begin{center}
+%	\includegraphics[width=0.3\textwidth]{img/2_shapes.png}
+%\end{center}
+%
+%
+%\textbf{Question}: \textit{Does procrustes produce a satisfactory alignment between the two shapes with different poses? Why?}
+%
+%Here the performance is unsatisfactory, simply because different poses have different positions of body parts, which means that holistic procrustes match can result only in pictures like below (note that faces are directed towards different sides). In order to get better results, we must have more degrees of freedom and match parts of body, which vary over different poses.
+%
+%\begin{center}
+%	\includegraphics[width=0.3\textwidth]{img/2_poses.png}
+%\end{center}
+%
+%
+%\textbf{Question}: \textit{What works better, aligning two different shapes in the same pose or two different poses of the same shape? Why?}
+%
+%Under holistic approach, aligning 2 different shapes under the same pose works better. As was said above, the holistic procrustes approach can only work if we have little variations across body parts, because we are not allowed to rotate them. With 2 different poses procrustes finds a bad compromise, because it must compensate mismatch between body parts that are far in 2 models (e.g. hands on the picture above). Thus it can mix up important things like directions of body,  scale of body, and make slightly different translation than necessary.
+%
+%
+%\textbf{Question}: \textit{Try the procrustes code on two different shapes and different poses.}
+%
+%\begin{center}
+%	\includegraphics[width=0.4\textwidth]{img/2_pose_shape.png}
+%\end{center}
+%
+%
+%\textbf{Question}: \textit{How would you modify the method to align articulated structures like the human body?}
+%
+%As the next questions suggests and as was already said above, we can use per part alignment.
+%
+%
+%\textbf{Question}: \textit{Implement a function that computes a per part procrustes alignment. Try the implemented function on the examples shown above, two different poses, two different shapes etc... What shortcomings does a part based alignment have? Reason in terms of robustness to noise, efficiency, accuracy, satisfaction of kinematic constraints.}
+%
+%On the first glance, the fit looks good and much better than what we had before with the holistic model (see first figure below). Indeed, now we have much more degrees of freedom than before, since we have quite detailed representation of the body in terms of 24 body parts: 'global' 'head' 'leftCalf' 'leftFingers' 'leftFoot' 'leftForeArm' 'leftHand' 'leftShoulder' 'leftThigh' 'leftToes' 'leftUpperArm' 'neck' 'rightCalf' 'rightFingers' 'rightFoot' 'rightForeArm' 'rightHand' 'rightShoulder' 'rightThigh' 'rightToes' 'rightUpperArm' 'spine' 'spine1' 'spine2'.
+%
+%\begin{tabular}{cc}
+%	Fitted (pink) and gold standard (blue) models & Only fitted model \\
+%	\includegraphics[width=0.5\textwidth]{img/2_part_match.png} & \includegraphics[width=0.5\textwidth]{img/2_part_match_diassembled.png}
+%\end{tabular}
+%
+%However, an obvious shortcoming can be easily seen if we visualize only the transformed model (see second figure above). Namely, the problem is that we match all the body parts independently, so finally they can be disconnected from each other. Usually, such gap between the body parts is not large, but anyway it produces unrealistic results that can be easily noticed. In other words, in our part-based procrustes we don't meet the kinematic constraints of the rigid body. Obviously, the holistic model doesn't have this problem.
+%
+%In terms of efficiency, part-based model should be slightly slower, because we need to find SVD of a cross-covariance matrix 24 times instead of 1, although this matrix is quite small, only 3x3 elements in 3D.
+%
+%The noise of the first type (simple gaussian with 0 mean) should be no problem to the part-based model by exactly the same reasons mentioned above. However the noise of the second type is more problematic, because it worsens the problem of violating the kinematic constraint. Thus we can end up even with more disassembled body.
+%
+%However, the part-based model has obviously higher accuracy, measured in terms of residuals, simply because it has more degrees of freedom to fit the data. This becomes even more obvious if we consider the extreme case: if we have as many parts as points in the mesh. Then we can fit all our points just perfectly (even with simple translation) with 100\% accuracy and 0 residuals.
+%
+%
+%
+%
+%
+%\newpage
+%\section{3 Aligning points in 3D with the Iterative Closest Point Algorithm	(ICP)}
+%\textbf{Question}: \textit{Run 06\_BodyModels2/rigid\_align\_without\_correspondences.py with distance\_Y\_to\_X
+%set to False, different random seeds and different amount of noise for the random transform. Does the algorithm converge always to a good solution? Why?}
+%
+%The algorithm doesn't always converge to a good solution, because it's not globally optimal. There is no guarantee to achieve the global minimum, we can stuck in a local minimum. It can be illustrated by the 2 following random transformations:
+%
+%\begin{tabular}{cc}
+%	With small random rotation & With large random rotation  \\
+%	\includegraphics[width=0.5\textwidth]{img/icp_fail_seed0.png} & \includegraphics[width=0.45\textwidth]{img/icp_fail_seed1.png}
+%\end{tabular}
+%
+%Of course, we reduce the problem of local minima by good initialization. For example, matching the position of the centroids and scaling according to the standard deviations can work in some cases. However, std scaling (at least how it was implemented in the code) is not really related to the scale between.
+%
+%Here is an example (2 pictures below):
+%X.std() / Y.std() = 0.523, however the real difference in scale is much bigger!
+%
+%\begin{tabular}{cc}
+%	Before std scaling & After std scaling  \\
+%	 & (it is 2 times greater) \\
+%	\includegraphics[width=0.5\textwidth]{img/std_init_1.png} & \includegraphics[width=0.41\textwidth]{img/std_init_2.png}
+%\end{tabular}
+%
+%Since one of the potential problems may be in a wrong initial scale, we can propose a different scale initialization scheme. Instead of X.std() / Y.std(), we can use the ratio of maximal distances found in each dataset (you can see the code), which captures the scale difference match better. Intuitively and most probably, it will be the ratio of distances between upper point of a head and lower point of a feet. This corresponds to the real scale much better than the ratio of std. You can see the pictures:
+%
+%\begin{tabular}{cc}
+%	Before max distance initialization & After max distance initialization  \\
+%	\includegraphics[width=0.5\textwidth]{img/max_dist_1.png} & \includegraphics[width=0.53\textwidth]{img/max_dist_2.png}
+%\end{tabular}
+%
+%So the problem with the initial scale discrpepancy is solved. However, in this case ICP also fails.
+%\begin{center}
+%	\includegraphics[width=0.4\textwidth]{img/not_robust_to_rotations.png}
+%\end{center}
+%
+%However, now we know that it fails because of the large rotation. With small or moderate rotation, we have perfect results.
+%
+%
+%
+%
+%\textbf{Question}: \textit{Does the algorithm behave similarly or differently with this new distance computation?
+% In which way are the solutions biased? Can you find a theoretical explanation for it?}
+%
+%The algorithm behaves differently, because it can happen that true correspondences are much farther away than better greedy correspondences in the vicinity of Y points (for example, if we look onto the feets of the picture below). So even this simple case which can be easily solved with the 1-st variant of ICP causes 2-nd variant of ICP to partially fail:
+%
+%\begin{center}
+%	\includegraphics[width=0.4\textwidth]{img/bad_model_bad_fit.png}
+%\end{center}
+%
+%Still there could be cases with very good initialization when second algorithm can perform perfect match. For example, if we have very small rotations:
+%
+%\begin{center}
+%	\includegraphics[width=0.4\textwidth]{img/bad_model_good_fit.png}
+%\end{center}
+%
+%
+%Theoretical explanation
+%
+%We think that the problem is that 2-nd variant of ICP has much more local minima than the 1-st variant. It can be explained by the question, which problem do we want solve: map part of wrong model to the whole true model or map the whole wrong model to the part of true model. If we do the latter, then we may find a local structure in the true model that somehow resembles the whole wrong model and get stuck there (which can be interpreted as a local minimum). Note, that in the case of such local match we can completely ignore all other points of our true model! So it's possible that a significant portion of our true model is not taken into account. But if we do the former approach, we indeed may use only a part of the wrong model for Procrustes fit, but in the same time we fit it to the whole true model, so the situation when some parts of the true model are left unknown to our algorithm is eliminated.
+%
+%And finally in which way are the solutions biased: the solutions with the 2-nd variant of ICP are biased towards a smaller model, since as was mentioned above, we always do a fit of the wrong model to only a \textbf{part} of the points in the true model. Since a part is always less then whole, we end up with fitting a smaller model.
+%
+%
+%\newpage
+%\section{4 Aligning points in 3D with ICP and Gradient Descent}
+%
+%\textbf{Question}: \textit{ How does it converge? How does it compare with your procrustes experiences in the first tasks?}
+%
+%Most of the runs the final error is minimized to the machine precision, e.g. we get values like 1.42e-22. However, we found a counter-example, where local search methods like gradient descent or Newton's method fail. We just need to rotate our initial model by a vector of angles [$\pi$, 0, 0]. Then different optimization algorithms can fail, e.g.: CG gives 0.160941 objective value and Dogleg gives 2.15138. But we know that the global minimum is exactly 0!
+%
+%The explanation is that our objective is not jointly convex in s, R, t (but it is convex in s, R or t if keep all other parameters fixed). So we cannot guarantee globally optimal solution with local search methods. However, if we remove the scale from the set of parameters over which we optimize, we can get very good fit (although we don't model difference in scale anymore! so our global minimum in this case is not exactly 0): CG gives 0.000051 objective value and Dogleg gives 0.000036.
+%
+%We must note that Procrustes algorithm always returns globally optimal solution due to the analytical solution obtained by SVD. If the correspondences are known and exact, then Procrustes algorithm performs globally optimal.
+%
+%
+%
+%\textbf{Question}: \textit{Study the differences when changing the parameter distance\_Y\_to\_X from True to False. Play with the random seed and amount of randomness in the transformation.?}
+%
+%With some seeds we get good fits for both methods (see the picture below). But note the difference in objective values comes from the fact that with flag distance\_Y\_to\_X=False we have much more points, so our objective is much higher, while actually the fit is very similar.
+%
+%\begin{tabular}{cc}
+%	fit with false: 6.05 & fit with true: 2.74e-04  \\
+%	\includegraphics[width=0.5\textwidth]{img/last_false_success.png} & \includegraphics[width=0.49\textwidth]{img/last_true_success.png}
+%\end{tabular}
+%
+%However there are examples when fit is very bad. Although the objective value still can be quite small, since in fact all points of one model are fitted to a small part of another model:
+%
+%\begin{tabular}{cc}
+%	fit with false: 5.77e-04 & fit with true: 7.25e-11  \\
+%	\includegraphics[width=0.5\textwidth]{img/last_false_bad.png} & \includegraphics[width=0.55\textwidth]{img/last_true_bad.png}
+%\end{tabular}
+%
+%And there are also situations when distance\_Y\_to\_X=False gives a perfect fit, and distance\_Y\_to\_X=True gives a suboptimal results by the reasons described in a previous section. So the results in this sense are consistent between SVD solution and local search methods.
+%
+%Another conclusion is that local search methods (like gradient descent) perform worse than SVD solution, since they may end up in a local minimum, giving a suboptimal solution for Procrustes part of ICP. Since ICP itself is susceptible to local minima, the local search methods worsen the situation.
+%
+%
+%
+%\newpage
+%\section{Bonus}
+%
+%\textbf{Question}: \textit{Add a prior to the objective that penalizes the scale variations from its initialization value (the quotient of standard deviations).}
+%
+%The proposed prior is lmbd * (scale - ch.asarray(X.std()/Y.std()). The idea is that we penalize high variations of the optimization parameter scale from the initial value, which is the ration of standard deviations.
+%
+%For example, if lambda=0.01, we get the following result:
+%
+%\begin{tabular}{cc}
+%	without prior & with prior: scale is preserved  \\ \includegraphics[width=0.55\textwidth]{img/last_true_bad.png} &
+%	\includegraphics[width=0.5\textwidth]{img/prior.png}
+%\end{tabular}
+%
+%So we got rid of the problem, where all points of one model are fitted to a small part of another model (shown on left below).
+%
+%Note, that if the initial scale is wrong (as we mentioned already in the 3-rd part of the assignment), then this prior doesn't make much sense.
+%
 
 \end{document}
 
