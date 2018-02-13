@@ -1,16 +1,46 @@
-## [Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation](https://arxiv.org/abs/1406.2984)
+## [Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation](http://papers.nips.cc/paper/5573-joint-training-of-a-convolutional-network-and-a-graphical-model-for-human-pose-estimation)
 #### Maksym Andriushchenko, Fan Yue
 
-The paper became quite influential...
+This is a TensorFlow implementation of [the paper](http://papers.nips.cc/paper/5573-joint-training-of-a-convolutional-network-and-a-graphical-model-for-human-pose-estimation), 
+which became quite influential in the human pose estimation task.
 
-<!-- <img src="images/mnist1-orig.png" width=200/> -->
+Surprisingly, we didn't find any implementation in the internet. It can be explained by the fact that the original paper 
+doesn't list any hyperparameters and doesn't provide many implementation details. Thus, it is extremely hard to
+reproduce, and we decided to add reasonable modifications from the recent papers to improve the results.
+
+Here is an example of joints detection based on FLIC dataset:
+
+Part Detector:
+
+Spatial Model:
+
+TODO: add 1 PD + 1 SM pictures from TensorBoard
 
 
+
+## Main Idea
+We have a fully-convolutional part detector that generates:
+![cnn architecture](report/img/cnn_architecture.png)
+<!-- <img src="report/img/cnn_architecture.png" width=200/> -->
+
+Then we have a subnetwork which is inspired by a Markov Random Field, which aims to enforce kinematic constraints
+between the joints:
+![cnn architecture](report/img/spatial_model.png)
+
+
+TODO: add many nice pictures from TensorBoard.
+TODO: detection rate curves vs the original paper
+TODO: convergence of the detection rate
 
 
 
 ## Difference from the paper
-
+Since the original paper was hard to reproduce, we introduced the following changes:
+- BN speeds up the convergence
+- Cross-entropy loss speeds up the convergence and improves the detection accuracy
+- Multi-task loss
+- Adam for joint training. Original paper was not really "joint".
+- ...
 
 
 ## How to run the code
@@ -40,3 +70,15 @@ Note that the script `main.py` saves tensorboard summaries (folder `tb`), model 
 For any questions regarding the code please contact Maksym Andriushchenko (m.**my surname**@gmail.com).
 Any suggestions are always welcome.
 
+
+## Citation
+You can cite the original paper as:
+```
+@inproceedings{tompson2014joint,
+  title={Joint training of a convolutional network and a graphical model for human pose estimation},
+  author={Tompson, Jonathan J and Jain, Arjun and LeCun, Yann and Bregler, Christoph},
+  booktitle={Advances in neural information processing systems},
+  pages={1799--1807},
+  year={2014}
+}
+```
