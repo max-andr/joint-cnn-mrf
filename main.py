@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import os
 import tensorflow as tf
@@ -32,7 +33,7 @@ def model(x, n_joints):
     # First convolutional layer - maps one grayscale image to 32 feature maps.
     n_filters = np.array([64, 128, 256, 512, 512])
     # n_filters = np.array([128, 128, 128, 512, 512])
-    if debug:
+    if hps.debug:
         n_filters = n_filters // 4
 
     x1 = x
@@ -298,16 +299,24 @@ def get_pairwise_distr():
         return pickle.load(handle)
 
 
-debug = False
-multi_gpu = not debug
-data_augm = True  # not debug
-use_sm = True
+parser = argparse.ArgumentParser(description='Define hyperparameters.')
+parser.add_argument('--debug', action='store_false', help='True if we want to debug.')
+parser.add_argument('--train', action='store_true', help='True if we want to train the model.')
+parser.add_argument('--restore', action='store_true', help='True if we want to restore the model.')
+parser.add_argument('--use_sm', action='store_true', help='True if we want to use the Spatial Model.')
+parser.add_argument('--data_augm', action='store_true', help='True if we want to use data augmentation.')
+parser.add_argument('--optimizer', type=str, default='adam', help='momentum or adam')
+parser.add_argument('--lr', type=int, default=0.001, help='Learning rate.')
+parser.add_argument('--lmbd', type=int, default=0.0001, help='Regularization coefficient.')
+hps = parser.parse_args()  # returns a Namespace object, new fields can be set like hps.abc = 10
+
+multi_gpu = not hps.debug  # because multi-gpu mode requires too much time to put all operations on all GPUs
 if multi_gpu:
     # gpus, gpu_memory = [0, 1, 2, 3, 4, 5, 6, 7], 0.4
     gpus, gpu_memory = [0, 1, 2, 3], 0.5
 else:
     gpus, gpu_memory = [6], 0.7
-train, restore_model, best_model_name = True, False, '2018-02-09 13:18:03'
+best_model_name = '2018-02-09 13:18:03'
 model_path = 'models_ex'
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
@@ -316,32 +325,30 @@ tb_train_iter = '{}/{}/train_iter'.format(tb_folder, cur_timestamp)
 tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
-n_eval_ex = 512 if debug else 1100
+n_eval_ex = 512 if hps.debug else 1100
 
 n_joints = 9  # excluding "torso-joint", which is 10-th
 x_train, y_train, x_test, y_test = get_dataset()
 pairwise_distr_np = get_pairwise_distr()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
-if debug:
+if hps.debug:
     n_train, n_test = 1024, 512  # for debugging purposes we take only a small subset
     train_idx, test_idx = np.random.permutation(n_train), np.random.permutation(n_test)
     x_train, y_train, x_test, y_test = x_train[train_idx], y_train[train_idx], x_test[test_idx], y_test[test_idx]
 # Main hyperparameters
-n_epochs = 30 if debug else 60
+n_epochs = 30 if hps.debug else 60
 batch_size = 16
-lmbd = 0.0001  # best: 0.1 for debug, and 0.0001
-lr, optimizer = 0.001, 'adam'  # best: 0.001, 'adam'
 n_updates_total = n_epochs * n_train // batch_size
 lr_decay_n_updates = [round(0.7 * n_updates_total), round(0.8 * n_updates_total), round(0.9 * n_updates_total)]
-lr_decay_coefs = [lr, lr / 2, lr / 5, lr / 10]
+lr_decay_coefs = [hps.lr, hps.lr / 2, hps.lr / 5, hps.lr / 10]
 img_tb_from = 70  # 50 or 450
 img_tb_to = img_tb_from + batch_size
 
 graph = tf.Graph()
 with graph.as_default(), tf.device('/cpu:0'):
     x_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
-    if use_sm:
+    if hps.use_sm:
         pairwise_energies, pairwise_biases = {}, {}
         for joint in joint_names[:n_joints]:
             for cond_joint in joint_dependence[joint]:
@@ -357,15 +364,15 @@ with graph.as_default(), tf.device('/cpu:0'):
     lr_tf = tf.train.piecewise_constant(n_iters_tf, lr_decay_n_updates, lr_decay_coefs)
 
     # Data augmentation: we apply the same random transformations both to images and heat maps
-    if data_augm:
+    if hps.data_augm:
         x_batch, hm_target_batch = tf.cond(flag_train, lambda: augm.augment_train(x_in, y_in),
                                            lambda: augm.augment_test(x_in, y_in))
     else:
         x_batch, hm_target_batch = x_in, y_in
 
-    if optimizer == 'adam':
+    if hps.optimizer == 'adam':
         opt = tf.train.AdamOptimizer(lr_tf)
-    elif optimizer == 'momentum':
+    elif hps.optimizer == 'momentum':
         opt = tf.train.MomentumOptimizer(learning_rate=lr_tf, momentum=0.9)
     else:
         raise Exception('wrong optimizer')
@@ -388,7 +395,7 @@ with graph.as_default(), tf.device('/cpu:0'):
                 hm_pred_pd = spatial_softmax(hm_pred_pd_logit)
                 hms_pred_pd.append(hm_pred_pd)
 
-                if use_sm:
+                if hps.use_sm:
                     # To disambiguate multiple people on the same image
                     hm_pred_pd_with_torso = tf.concat([hm_pred_pd, hm_target[:, :, :, n_joints:]], axis=3)
 
@@ -403,7 +410,7 @@ with graph.as_default(), tf.device('/cpu:0'):
                 with tf.name_scope('loss'):
                     loss_pd = cross_entropy(hm_pred_pd_logit, hm_target[:, :, :, :n_joints])
                     loss_sm = cross_entropy(hm_pred_sm_logit, hm_target[:, :, :, :n_joints])
-                    loss_tower = loss_pd + loss_sm + lmbd * weight_decay(var_pattern='weights')
+                    loss_tower = loss_pd + loss_sm + hps.lmbd * weight_decay(var_pattern='weights')
                     losses.append(loss_tower)
                     mses_pd.append(loss_tower)
                     mses_sm.append(loss_tower)
@@ -447,7 +454,7 @@ with graph.as_default(), tf.device('/cpu:0'):
     train_step = tf.group(apply_gradient_op, variables_averages_op)
 
     tf.summary.image('input', x_batch, 30)
-    if use_sm:
+    if hps.use_sm:
         for key in pairwise_energies:
             tf.summary.image('pairwise_potential_' + key, pairwise_energies[key], 30)
             tf.summary.image('pairwise_biases_' + key, pairwise_biases[key], 30)
@@ -468,7 +475,7 @@ with graph.as_default(), tf.device('/cpu:0'):
 gpu_options = tf.GPUOptions(visible_device_list=str(gpus)[1:-1], per_process_gpu_memory_fraction=gpu_memory)
 config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
 with tf.Session(config=config, graph=graph) as sess:
-    if not restore_model:
+    if not hps.restore:
         sess.run(tf.global_variables_initializer())
     else:
         saver.restore(sess, model_path + '/' + best_model_name)
@@ -488,7 +495,7 @@ with tf.Session(config=config, graph=graph) as sess:
                      ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
     tb.write_summary(train_writer, [train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm],
                      ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
-    if train:
+    if hps.train:
         global_iter = 0
         for epoch in range(1, n_epochs + 1):
             for x_train_batch, y_train_batch in get_next_batch(x_train, y_train, batch_size, shuffle=True):
@@ -523,10 +530,6 @@ with tf.Session(config=config, graph=graph) as sess:
     train_iters_writer.close()
 print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 
-# TODO: show a principled plot of test MSE between PD and SM.
-
-# Do for the final submission
-# TODO: a readme on how to run our code (1: download FLIC dataset, 2: data.py, 3: pariwise_distr.py, ...)
 
 """
 Structure:
@@ -589,6 +592,8 @@ pairwise pots is slightly less useful for LSP)
 
 
 We excluded self connections like face|face
+
+show a principled plot of test MSE between PD and SM.
 
 Boring but important implementation detail: BN is not so efficient in multi-gpu training. 
 

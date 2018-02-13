@@ -3,7 +3,7 @@ from scipy import signal
 import pickle
 
 """
-This file is to prepare the pairwise distribution for MRF with star model
+This file is to prepare the pairwise distribution for fully connected model
 
 """
 print(pickle.format_version)
