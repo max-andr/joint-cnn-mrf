@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-N_IMG_TO_SHOW = 50
+N_IMG_TO_SHOW = 20
 
 
 def colorize(hm, joint_name):
@@ -41,12 +41,8 @@ def run_summary(sess, writer, tb_op, cur_iter, feed_dict):
     writer.add_summary(summary, cur_iter)
 
 
-def main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm):
-    with tf.name_scope('main'):
-        tf.summary.scalar('mse_part_detector', mse_pd)
-        tf.summary.scalar('mse_spatial_model', mse_sm)
-        tf.summary.scalar('det_rate', det_rate_pd)
-        tf.summary.scalar('det_rate', det_rate_sm)
+def main_summaries(grads_vars):
+    with tf.name_scope('grads'):
         # Add histograms for gradients (only for weights, not biases)
         for grad, var in grads_vars:
             if 'weights' in var.op.name or 'energy' in var.op.name:
@@ -56,11 +52,11 @@ def main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm):
         # Add histograms for trainable variables.
         for var in tf.trainable_variables():
             tf.summary.histogram(var.op.name, var)
-
+    with tf.name_scope('conv_filters_1'):
         w_conv1_full_img = tf.transpose(get_var_by_name('conv1_fullres/weights:0'), [3, 0, 1, 2])  # displayed in color
         tf.summary.image('w_conv1', w_conv1_full_img, N_IMG_TO_SHOW)
-        w_conv1_half_img = tf.transpose(get_var_by_name('conv1_halfres/weights:0'), [3, 0, 1, 2])  # displayed in color
-        tf.summary.image('w_conv1', w_conv1_half_img, N_IMG_TO_SHOW)
+        # w_conv1_half_img = tf.transpose(get_var_by_name('conv1_halfres/weights:0'), [3, 0, 1, 2])  # displayed in color
+        # tf.summary.image('w_conv1', w_conv1_half_img, N_IMG_TO_SHOW)
 
 
 def show_img_plus_hm(x, hm, joint_ids, in_height, in_width, hm_name):
@@ -75,4 +71,11 @@ def show_img_plus_hm(x, hm, joint_ids, in_height, in_width, hm_name):
         tf.summary.image('hm_{}_{}'.format(hm_name, joint_name), img_plus_joint, N_IMG_TO_SHOW)
         img_plus_all_joints = tf.minimum(img_plus_all_joints + hm_cur_joint, 1)
     tf.summary.image('img_plus_all_joints_' + hm_name, img_plus_all_joints, N_IMG_TO_SHOW)
+
+
+def write_summary(writer, vals, names, cur_iter):
+    for val, name in zip(vals, names):
+        summary = tf.Summary()
+        summary.value.add(tag=name, simple_value=val)
+        writer.add_summary(summary, cur_iter)
 

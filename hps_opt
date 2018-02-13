@@ -1,6 +1,71 @@
+1 bank: 21.875
+2 banks: 23.828
+3 banks: 24.609
+
+
+-----n_train, n_test = 1024, 512-----
+Randomize test/train subsets:
+3 banks + diff number of filters: 27, 28, 29
+
+CE on top of CE: 30% (best: 32.6%)
+
+CE in loop: 26% (max 27%)
+
+just CE: yes
+
+avg_pool: 26-29% no
+concat: 28% no
+max+concat: 25% - 30% no
+max+sum/3: 26% - 31% yes
+9x9 kernel: 22% - 27% no
+3x3 kernel: 29% - 33% yes
+1x1 kernel: 24 - 28% no
+
+full da: 38% yes
+da + wd: 49% yes
+
+full dataset, lambda=0.01: PD: 36% (5 h), PD+SM: 52.877% 57.738% (7.5h, 7.5 min/epoch)
+
+
+best: lambda=0.1 (adam lr=0.001)
+Epoch 0  test_dr 0.488 0.488  train_dr 0.391 0.391  test_mse 8.58230 8.58230  train_mse 8.58668 8.58668
+Epoch 1  test_dr 17.285 17.285  train_dr 30.078 30.078  test_mse 5.74641 5.74641  train_mse 5.26313 5.26313
+Epoch 2  test_dr 22.461 22.461  train_dr 38.477 38.477  test_mse 5.80371 5.80371  train_mse 5.07314 5.07314
+Epoch 3  test_dr 21.973 21.973  train_dr 39.648 39.648  test_mse 5.81745 5.81745  train_mse 4.91401 4.91401
+Epoch 4  test_dr 28.223 28.223  train_dr 50.391 50.391  test_mse 5.57582 5.57582  train_mse 4.55565 4.55565
+Epoch 5  test_dr 22.559 22.559  train_dr 48.633 48.633  test_mse 5.74632 5.74632  train_mse 4.47440 4.47440
+Epoch 6  test_dr 26.953 26.953  train_dr 50.586 50.586  test_mse 5.63731 5.63731  train_mse 4.47383 4.47383
+Epoch 7  test_dr 20.117 20.117  train_dr 47.070 47.070  test_mse 5.90558 5.90558  train_mse 4.59646 4.59646
+Epoch 8  test_dr 23.242 23.242  train_dr 53.809 53.809  test_mse 5.85448 5.85448  train_mse 4.49265 4.49265
+Epoch 9  test_dr 25.781 25.781  train_dr 59.570 59.570  test_mse 5.75524 5.75524  train_mse 4.31031 4.31031
+Epoch 10  test_dr 24.902 24.902  train_dr 56.641 56.641  test_mse 6.20170 6.20170  train_mse 4.60215 4.60215
+Epoch 11  test_dr 28.809 28.809  train_dr 59.570 59.570  test_mse 5.70655 5.70655  train_mse 4.26673 4.26673
+Epoch 12  test_dr 31.641 31.641  train_dr 63.086 63.086  test_mse 5.61025 5.61025  train_mse 4.13241 4.13241
+Epoch 13  test_dr 24.219 24.219  train_dr 65.137 65.137  test_mse 5.70982 5.70982  train_mse 4.18282 4.18282
+Epoch 14  test_dr 25.488 25.488  train_dr 64.160 64.160  test_mse 6.15454 6.15454  train_mse 4.12841 4.12841
+Epoch 15  test_dr 24.023 24.023  train_dr 56.152 56.152  test_mse 5.79291 5.79291  train_mse 4.27191 4.27191
+Epoch 16  test_dr 30.273 30.273  train_dr 67.090 67.090  test_mse 5.55673 5.55673  train_mse 4.13622 4.13622
+Epoch 17  test_dr 29.785 29.785  train_dr 72.852 72.852  test_mse 5.83686 5.83686  train_mse 3.92885 3.92885
+Epoch 18  test_dr 29.980 29.980  train_dr 73.828 73.828  test_mse 5.68080 5.68080  train_mse 3.87922 3.87922
+Epoch 19  test_dr 19.531 19.531  train_dr 63.086 63.086  test_mse 5.88047 5.88047  train_mse 4.09675 4.09675
+Epoch 20  test_dr 24.023 24.023  train_dr 66.602 66.602  test_mse 5.83490 5.83490  train_mse 4.15203 4.15203
+Epoch 21  test_dr 33.887 33.887  train_dr 74.316 74.316  test_mse 5.61318 5.61318  train_mse 3.78175 3.78175
+Epoch 22  test_dr 34.375 34.375  train_dr 91.406 91.406  test_mse 5.38137 5.38137  train_mse 3.37494 3.37494
+Epoch 23  test_dr 33.398 33.398  train_dr 92.480 92.480  test_mse 5.32451 5.32451  train_mse 3.34036 3.34036
+Epoch 24  test_dr 33.301 33.301  train_dr 92.969 92.969  test_mse 5.35874 5.35874  train_mse 3.33120 3.33120
+Epoch 25  test_dr 38.574 38.574  train_dr 96.875 96.875  test_mse 5.30792 5.30792  train_mse 3.11995 3.11995
+Epoch 26  test_dr 36.914 36.914  train_dr 96.777 96.777  test_mse 5.43033 5.43033  train_mse 3.07384 3.07384
+Epoch 27  test_dr 35.449 35.449  train_dr 96.484 96.484  test_mse 5.48463 5.48463  train_mse 3.07576 3.07576
+Epoch 28  test_dr 35.449 35.449  train_dr 96.973 96.973  test_mse 5.57619 5.57619  train_mse 3.00432 3.00432
+Epoch 29  test_dr 35.449 35.449  train_dr 96.875 96.875  test_mse 5.64075 5.64075  train_mse 2.99745 2.99745
+Epoch 30  test_dr 35.742 35.742  train_dr 97.168 97.168  test_mse 5.54138 5.54138  train_mse 2.98939 2.98939
+Done in 18.05 min
+
+
+
 4000 ex, PD+SM
 Epoch: 1  test_mse_pd: 0.57331  test_mse_sm: 0.57120  train_mse_pd: 0.61293  train_mse_sm: 0.61358
-Epoch: 2  test_mse_pd: 0.51564  test_mse_sm: 0.50628  train_mse_pd: 0.54552  train_mse_sm: 0.54090
+Epoch: 2  test_ms0e_pd: 0.51564  test_mse_sm: 0.50628  train_mse_pd: 0.54552  train_mse_sm: 0.54090
 Epoch: 3  test_mse_pd: 0.49746  test_mse_sm: 0.49380  train_mse_pd: 0.50238  train_mse_sm: 0.49926
 Epoch: 4  test_mse_pd: 0.45556  test_mse_sm: 0.44834  train_mse_pd: 0.43717  train_mse_sm: 0.42879
 Epoch: 5  test_mse_pd: 0.46716  test_mse_sm: 0.46583  train_mse_pd: 0.43273  train_mse_sm: 0.42895

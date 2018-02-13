@@ -13,7 +13,7 @@ print(y_train.shape)
 coefs = np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]], dtype=np.uint16) / 256
 kernel = coefs.T @ coefs
 
-joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose']
+joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose', 'torso']
 
 joint_dependece = {'lsho': ['nose', 'lelb'], 'lelb': ['lsho', 'lwri'], 'lwri': ['lelb'],
                    'rsho': ['nose', 'relb'], 'relb': ['rsho', 'rwri'], 'rwri': ['relb'],
@@ -51,7 +51,7 @@ def compute_pairwise_distribution(joint, cond_j):
 pairwise_distribution = {}
 for joint in joint_ids:
     for cond_j in joint_ids:
-        if cond_j in joint_dependece[joint]:
+        if cond_j is not joint:
             print(joint + '_' + cond_j)
             pairwise_distribution[joint + '_' + cond_j] = compute_pairwise_distribution(joint, cond_j)
 
@@ -62,7 +62,7 @@ for joint in joint_ids:
 # plt.figure(2)
 # plt.imshow(np.uint8(pairwise_distribution['rhip_nose'])*255)
 # plt.show()
-
+print('number of pairs is: ', len(pairwise_distribution))
 
 with open('pairwise_distribution.pickle', 'wb') as handle:
     pickle.dump(pairwise_distribution, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -9,12 +9,14 @@ import numpy as np
 """
 This script generate the x_train, x_test, y_train, y_test for the further process from the FLIC dataset.
 
-x_train, x_test is [, 360, 240, 3], type = float32, value is from 0 to 255 (unnormalized)
+x_train, x_test is [, 360, 240, 3], type = float32, pixels are from 0 to 1
 
-y_train, y_test is [, 90, 60, 11], type = float32, you should divide it by 256 before any use
+y_train, y_test is [, 90, 60, 11], type = float32
 
 There're 3987 for training and 1016 for testing
 """
+
+
 def creat_torso_hm(torsobox, kernel, temp, pad):
     """
     :param torsobox: is a 4 x 1 vector, (1st, 2st) is the loc of the top left corner of the box
@@ -24,8 +26,8 @@ def creat_torso_hm(torsobox, kernel, temp, pad):
     coords[0] = (torsobox[0] + torsobox[2]) / 2  # maybe I need to exchange the coords0 and 1
     coords[1] = (torsobox[1] + torsobox[3]) / 2
     print(coords)
-    coords[0] = np.int(coords[0])
-    coords[1] = np.int(coords[1])
+    coords[0] = round(coords[0])
+    coords[1] = round(coords[1])
     if coords[0] > 90:
         coords[0] = 90
     if coords[0] < 0:
@@ -41,11 +43,12 @@ def creat_torso_hm(torsobox, kernel, temp, pad):
     # print(data_FLIC[i][2][:, id])
     # print(i, joint)
     coords = coords + pad
-    heat_map[np.int(coords[0] - temp):np.int(coords[0] + temp + 1),
-    np.int(coords[1] - temp):np.int(coords[1] + temp + 1)] = kernel
+    heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
+             int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
     # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
     heat_map = heat_map[pad:pad + 90, pad:pad + 60]
     return heat_map
+
 
 def downsample_cube(myarr, factor, ignoredim=0):
     """
@@ -77,20 +80,19 @@ train_index = list(np.where(is_train == 1))[0]
 test_index = list(np.array(np.where(is_train == 0)))[0]
 print(len(train_index), len(test_index))
 # coefs = np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]], dtype=np.float32) / 256
-coefs = np.array([[1, 4, 6, 4, 1]], dtype=np.float32) / 16
+# coefs = np.array([[1, 4, 6, 4, 1]], dtype=np.float32) / 16
+coefs = np.array([[1, 2, 1]], dtype=np.float32) / 4  # best!
+# coefs = np.array([[1]])
 kernel = coefs.T @ coefs
-temp = np.int((len(kernel) - 1) / 2)
+temp = round((len(kernel) - 1) / 2)
 print(temp)
 pad = 5  # use padding to avoid the exceeding of the boundary
-
-
 
 ### This part is for x_train
 x_train = []
 for i in train_index:
     img = misc.imread('./images_FLIC/' + data_FLIC[i][3][0])
-    img = downsample_cube(img, 2, ignoredim=2)  # the third dim
-
+    # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
     img = img.astype(np.float32)
     img = img / 255
 
@@ -101,8 +103,7 @@ x_train = np.array(x_train)
 x_test = []
 for i in test_index:
     img = misc.imread('./images_FLIC/' + data_FLIC[i][3][0])
-    img = downsample_cube(img, 2, ignoredim=2)  # the third dim
-
+    # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
     img = img.astype(np.float32)
     img = img / 255
     x_test.append(img)
@@ -115,15 +116,15 @@ np.save('x_test_flic', x_test)
 
 ### This part is for y_train
 # i = 0
-x_train_hmap = []
+y_train_hmap = []
 for i in train_index:
     hmap = []
     for joint in joint_ids:
         print(joint)
         id = dict[joint]
         coords = data_FLIC[i][2][:, id] / 8  # divided by 8
-        coords[0] = np.int(coords[0])
-        coords[1] = np.int(coords[1])
+        coords[0] = round(coords[0])
+        coords[1] = round(coords[1])
         if coords[0] > 90:
             coords[0] = 90
         if coords[0] < 0:
@@ -140,30 +141,30 @@ for i in train_index:
         print(i, joint)
         coords = coords + pad
         print(coords)
-        heat_map[np.int(coords[0] - temp):np.int(coords[0] + temp + 1),
-        np.int(coords[1] - temp):np.int(coords[1] + temp + 1)] = kernel
+        heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
+                 int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
         # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
         heat_map = heat_map[pad:pad + 90, pad:pad + 60]
         print(heat_map.shape)
         hmap.append(heat_map)
-    hmap.append(creat_torso_hm(data_FLIC[i][6][0]/8, kernel, temp, pad))
+    hmap.append(creat_torso_hm(data_FLIC[i][6][0] / 8, kernel, temp, pad))
     hmap = np.array(hmap)
     hmap = hmap.swapaxes(0, 2)
-    x_train_hmap.append(hmap)
-x_train_hmap = np.array(x_train_hmap)
-print(x_train_hmap.shape)
-np.save('y_train_flic', x_train_hmap)
+    y_train_hmap.append(hmap)
+y_train_hmap = np.array(y_train_hmap)
+print(y_train_hmap.shape)
+np.save('y_train_flic', y_train_hmap)
 
 ### This part is for y_test
-x_test_hmap = []
+y_test_hmap = []
 for i in test_index:
     hmap = []
     for joint in joint_ids:
         print(joint)
         id = dict[joint]
         coords = data_FLIC[i][2][:, id] / 8  # divided by 8
-        coords[0] = np.int(coords[0])
-        coords[1] = np.int(coords[1])
+        coords[0] = round(coords[0])
+        coords[1] = round(coords[1])
         if coords[0] > 90:
             coords[0] = 90
         if coords[0] < 0:
@@ -179,17 +180,16 @@ for i in test_index:
         # print(data_FLIC[i][2][:, id])
         # print(i, joint)
         coords = coords + pad
-        heat_map[np.int(coords[0] - temp):np.int(coords[0] + temp + 1),
-                 np.int(coords[1] - temp):np.int(coords[1] + temp + 1)] = kernel
+        heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
+                 int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
         # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
         heat_map = heat_map[pad:pad + 90, pad:pad + 60]
         print(heat_map.shape)
         hmap.append(heat_map)
-    hmap.append(creat_torso_hm(data_FLIC[i][6][0]/8, kernel, temp, pad))
+    hmap.append(creat_torso_hm(data_FLIC[i][6][0] / 8, kernel, temp, pad))
     hmap = np.array(hmap)
     hmap = hmap.swapaxes(0, 2)
-    x_test_hmap.append(hmap)
-x_test_hmap = np.array(x_test_hmap)
-print(x_test_hmap.shape)
-np.save('y_test_flic', x_test_hmap)
-
+    y_test_hmap.append(hmap)
+y_test_hmap = np.array(y_test_hmap)
+print(y_test_hmap.shape)
+np.save('y_test_flic', y_test_hmap)

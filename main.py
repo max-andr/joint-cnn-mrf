@@ -4,24 +4,22 @@ import tensorflow as tf
 import time
 import pickle
 
-import augmentation
+import augmentation as augm
 import evaluation
 import tensorboard as tb
 from datetime import datetime
 
-joint_names = np.array(['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose'])
-
-joint_dependence = {'lsho': ['nose', 'lelb'], 'lelb': ['lsho', 'lwri'], 'lwri': ['lelb'],
-                    'rsho': ['nose', 'relb'], 'relb': ['rsho', 'rwri'], 'rwri': ['relb'],
-                    'lhip': ['nose'], 'rhip': ['nose'], 'nose': ['lsho', 'rsho', 'lhip', 'rhip']}
-
-dict = {'lsho':   0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
-        'lkne':   7, 'lank': 8, 'rhip': 9, 'rkne': 10, 'rank': 11, 'leye': 12, 'reye': 13,
-        'lear':   14, 'rear': 15, 'nose': 16, 'msho': 17, 'mhip': 18, 'mear': 19, 'mtorso': 20,
-        'mluarm': 21, 'mruarm': 22, 'mllarm': 23, 'mrlarm': 24, 'mluleg': 25, 'mruleg': 26,
-        'mllleg': 27, 'mrlleg': 28}
 
 np.set_printoptions(suppress=True, precision=4)
+joint_names = np.array(['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose', 'torso'])
+
+# star like model with chain-like inference (just to test)
+# joint_dependence = {'lsho': ['nose', 'lelb'], 'lelb': ['lsho', 'lwri'], 'lwri': ['lelb'],
+#                     'rsho': ['nose', 'relb'], 'relb': ['rsho', 'rwri'], 'rwri': ['relb'],
+#                     'lhip': ['nose'], 'rhip': ['nose'], 'nose': ['lsho', 'rsho', 'lhip', 'rhip']}
+joint_dependence = {}  # Fully-connected PGM
+for joint in joint_names:
+    joint_dependence[joint] = [joint_cond for joint_cond in joint_names if joint_cond != joint]
 
 
 def model(x, n_joints):
@@ -32,31 +30,43 @@ def model(x, n_joints):
     :return: predicted heat map batch_size x 90 x 60 x n_joints
     """
     # First convolutional layer - maps one grayscale image to 32 feature maps.
-    n_bottleneck, n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = 64, 64, 128, 256, 256, 512
+    n_filters = np.array([64, 128, 256, 512, 512])
+    # n_filters = np.array([128, 128, 128, 512, 512])
     if debug:
-        n_filters1, n_filters2, n_filters3, n_filters4, n_filters5 = \
-            n_filters1 // 4, n_filters2 // 4, n_filters3 // 4, n_filters4 // 4, n_filters5 // 4
+        n_filters = n_filters // 4
 
     x1 = x
-    x2 = tf.image.resize_images(x, [int(x.shape[1]) // 2, int(x.shape[2]) // 2])
-
-    x1 = conv_layer(x1, 5, 1, 3, n_filters1, 'conv1_fullres')  # result: 360x240
+    x1 = conv_layer(x1, 5, 2, 3, n_filters[0], 'conv1_fullres')  # result: 360x240
     x1 = max_pool_layer(x1, 2, 2)  # result: 180x120
-    x1 = conv_layer(x1, 5, 1, n_filters1, n_filters2, 'conv2_fullres')  # result: 180x120
+    x1 = conv_layer(x1, 5, 1, n_filters[0], n_filters[1], 'conv2_fullres')  # result: 180x120
     x1 = max_pool_layer(x1, 2, 2)  # result: 180x60
-    x1 = conv_layer(x1, 5, 1, n_filters2, n_filters3, 'conv3_fullres')  # result: 90x60
-    x1 = conv_layer(x1, 9, 1, n_filters3, n_filters4, 'conv4_fullres')  # result: 90x60
+    x1 = conv_layer(x1, 5, 1, n_filters[1], n_filters[2], 'conv3_fullres')  # result: 90x60
+    x1 = conv_layer(x1, 9, 1, n_filters[2], n_filters[3], 'conv4_fullres')  # result: 90x60
 
-    x2 = conv_layer(x2, 5, 1, 3, n_filters1, 'conv1_halfres')  # result: 360x240
-    x2 = max_pool_layer(x2, 2, 2)  # result: 180x120
-    x2 = conv_layer(x2, 5, 1, n_filters1, n_filters2, 'conv2_halfres')  # result: 180x120
-    x2 = max_pool_layer(x2, 2, 2)  # result: 180x60
-    x2 = conv_layer(x2, 5, 1, n_filters2, n_filters3, 'conv3_halfres')  # result: 90x60
-    x2 = conv_layer(x2, 9, 1, n_filters3, n_filters4, 'conv4_halfres')  # result: 90x60
+    x2 = tf.image.resize_images(x, [int(x.shape[1]) // 2, int(x.shape[2]) // 2])
+    x2 = conv_layer(x2, 5, 2, 3, n_filters[0], 'conv1_halfres')  # result: 180x120
+    x2 = max_pool_layer(x2, 2, 2)  # result: 90x60
+    x2 = conv_layer(x2, 5, 1, n_filters[0], n_filters[1], 'conv2_halfres')  # result: 90x60
+    x2 = max_pool_layer(x2, 2, 2)  # result: 45x30
+    x2 = conv_layer(x2, 5, 1, n_filters[1], n_filters[2], 'conv3_halfres')  # result: 45x30
+    x2 = conv_layer(x2, 9, 1, n_filters[2], n_filters[3], 'conv4_halfres')  # result: 45x30
+    x2 = tf.image.resize_images(x2, [int(x1.shape[1]), int(x1.shape[2])])
 
-    x = x1 + tf.image.resize_images(x2, [2 * int(x2.shape[1]), 2 * int(x2.shape[2])])
-    x = conv_layer(x, 9, 1, n_filters4, n_filters5, 'conv5')  # result: 90x60
-    x = conv_layer(x, 9, 1, n_filters5, n_joints, 'conv6', last_layer=True)  # result: 90x60
+    x3 = tf.image.resize_images(x, [int(x.shape[1]) // 4, int(x.shape[2]) // 4])
+    x3 = conv_layer(x3, 5, 2, 3, n_filters[0], 'conv1_quarterres')  # result: 90x60
+    x3 = max_pool_layer(x3, 2, 2)  # result: 45x30
+    x3 = conv_layer(x3, 5, 1, n_filters[0], n_filters[1], 'conv2_quarterres')  # result: 45x30
+    x3 = max_pool_layer(x3, 2, 2)  # result: 23x15
+    x3 = conv_layer(x3, 5, 1, n_filters[1], n_filters[2], 'conv3_quarterres')  # result: 23x15
+    x3 = conv_layer(x3, 9, 1, n_filters[2], n_filters[3], 'conv4_quarterres')  # result: 23x15
+    x3 = tf.image.resize_images(x3, [int(x1.shape[1]), int(x1.shape[2])])
+
+    x = x1 + x2 + x3
+    x /= 3  # to compensate for summing up - should improve the convergence
+    # x = tf.concat([x1, x2, x3], axis=3)
+    # x = conv_layer(x, 9, 1, 3*n_filters[3], n_filters[4], 'conv5')  # result: 90x60
+    x = conv_layer(x, 9, 1, n_filters[3], n_filters[4], 'conv5')  # result: 90x60
+    x = conv_layer(x, 9, 1, n_filters[4], n_joints, 'conv6', last_layer=True)  # result: 90x60
 
     return x
 
@@ -77,7 +87,7 @@ def conv_mrf(A, B):
     return C
 
 
-def spatial_model(heat_map, pairwise_energies):
+def spatial_model(heat_map):
     """
     from Learning Human Pose Estimation Features with Convolutional Networks
     :param heat_map: is produced by model as the unary distributions: batch_size x 90 x 60 x n_joints
@@ -94,7 +104,7 @@ def spatial_model(heat_map, pairwise_energies):
 
     delta = 10 ** -6  # for numerical stability
     heat_map_hat = []
-    for joint_id, joint_name in enumerate(joint_names):
+    for joint_id, joint_name in enumerate(joint_names[:n_joints]):
         with tf.variable_scope(joint_name):
             hm = heat_map[:, :, :, joint_id:joint_id + 1]
             hm = batch_norm(hm)
@@ -108,11 +118,6 @@ def spatial_model(heat_map, pairwise_energies):
                 marginal_energy += tf.log(conv_mrf(prior, likelihood) + bias + delta)
             heat_map_hat.append(marginal_energy)
     return tf.stack(heat_map_hat, axis=3)[:, :, :, :, 0]
-
-
-def mrf_trainable(heat_map):
-    # TODO: produce a new heat map using MRF
-    return heat_map
 
 
 def batch_norm(x):
@@ -156,7 +161,7 @@ def conv_layer(x, size, stride, n_in, n_out, name, last_layer=False):
             activ = pre_activ
     # we do it out of the namescope to show it separately in Tensorboard
     tb.var_summary(pre_activ, name)
-    tf.summary.image('f_activ_' + name, activ[:, :, :, 7:8], 20)
+    tf.summary.image('f_activ_' + name, activ[:, :, :, 7:8], 3)
     return activ
 
 
@@ -200,7 +205,15 @@ def get_var_by_name(var_name_to_find):
     return [v for v in tf.trainable_variables() if v.name == var_name_to_find][0]
 
 
-def mean_squared_error(hm1, hm2):
+def spatial_softmax(hm):
+    hm_height, hm_width, n_joints = int(hm.shape[1]), int(hm.shape[2]), int(hm.shape[3])
+    hm = tf.reshape(hm, [-1, hm_height * hm_width, n_joints])
+    hm = tf.nn.softmax(logits=hm, dim=1)
+    hm = tf.reshape(hm, [-1, hm_height, hm_width, n_joints])
+    return hm
+
+
+def cross_entropy(hm1, hm2):
     """
     Mean squared error between 2 heat maps for a batch as described in
     [Efficient Object Localization Using Convolutional Networks](https://arxiv.org/abs/1411.4280)
@@ -208,7 +221,17 @@ def mean_squared_error(hm1, hm2):
     hm1, hm2: tensor of size [n_images, height, width, n_joints]
     """
     # if we don't multiply by number of pixels, then we get too small value of the loss
-    return tf.reduce_mean((hm1 - hm2) ** 2) * hm_height * hm_width * n_joints
+    # return tf.reduce_mean((hm1 - hm2) ** 2) * hm_height * hm_width * n_joints
+    hm_height, hm_width, n_joints = int(hm1.shape[1]), int(hm1.shape[2]), int(hm1.shape[3])
+    hm1 = tf.reshape(hm1, [-1, hm_height*hm_width, n_joints])
+    hm2 = tf.reshape(hm2, [-1, hm_height*hm_width, n_joints])
+    # loss_list = []
+    # for i in range(n_joints):
+    #     loss_i = tf.nn.sigmoid_cross_entropy_with_logits(logits=hm1[:, :, i], labels=hm2[:, :, i])
+    #     loss_list.append(loss_i)
+    # loss = tf.stack(loss_list, axis=1)
+    loss = tf.nn.softmax_cross_entropy_with_logits(logits=hm1, labels=hm2, dim=1)
+    return tf.reduce_mean(loss)
 
 
 def average_gradients(tower_grads):
@@ -230,7 +253,6 @@ def average_gradients(tower_grads):
         for g, _ in grad_and_vars:
             # Add 0 dimension to the gradients to represent the tower.
             expanded_g = tf.expand_dims(g, 0)
-
             # Append on a 'tower' dimension which we will average over below.
             grads.append(expanded_g)
 
@@ -257,18 +279,10 @@ def eval_error(X_np, Y_np, sess, batch_size):
     n_batches = len(X_np) // batch_size
     mse_pd_val, mse_sm_val, det_rate_pd_val, det_rate_sm_val = 0.0, 0.0, 0.0, 0.0
     for batch_x, batch_y in get_next_batch(X_np, Y_np, batch_size):
-        v1, v2, v3, v4 = sess.run([mse_pd, mse_sm, det_rate_pd, det_rate_sm], feed_dict={x_in: batch_x, y_in: batch_y, flag_train: False})
+        v1, v2, v3, v4 = sess.run([loss_pd, loss_sm, det_rate_pd, det_rate_sm], feed_dict={x_in: batch_x, y_in: batch_y, flag_train: False})
         mse_pd_val, mse_sm_val = mse_pd_val + v1, mse_sm_val + v2
         det_rate_pd_val, det_rate_sm_val = det_rate_pd_val + v3, det_rate_sm_val + v4
     return mse_pd_val / n_batches, mse_sm_val / n_batches, det_rate_pd_val / n_batches, det_rate_sm_val / n_batches
-
-
-def spatial_softmax(hm):
-    hm_height, hm_width, n_joints = int(hm.shape[1]), int(hm.shape[2]), int(hm.shape[3])
-    hm = tf.reshape(hm, [-1, hm_height * hm_width, n_joints])
-    hm = tf.nn.softmax(logits=hm, dim=1)
-    hm = tf.reshape(hm, [-1, hm_height, hm_width, n_joints])
-    return hm
 
 
 def get_dataset():
@@ -284,13 +298,16 @@ def get_pairwise_distr():
         return pickle.load(handle)
 
 
-multi_gpu = True
-if multi_gpu:
-    gpus, gpu_memory = [0, 1, 2, 3, 4, 5, 6, 7], 0.3
-else:
-    gpus, gpu_memory = [0], 0.65
 debug = False
-train, restore_model, best_model_name = True, False, '2018-01-29 15:24:39'
+multi_gpu = not debug
+data_augm = True  # not debug
+use_sm = True
+if multi_gpu:
+    # gpus, gpu_memory = [0, 1, 2, 3, 4, 5, 6, 7], 0.4
+    gpus, gpu_memory = [0, 1, 2, 3], 0.5
+else:
+    gpus, gpu_memory = [6], 0.7
+train, restore_model, best_model_name = True, False, '2018-02-09 13:18:03'
 model_path = 'models_ex'
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
@@ -299,48 +316,52 @@ tb_train_iter = '{}/{}/train_iter'.format(tb_folder, cur_timestamp)
 tb_train = '{}/{}/train'.format(tb_folder, cur_timestamp)
 tb_test = '{}/{}/test'.format(tb_folder, cur_timestamp)
 tb_log_iters = False
-# img_tb_from, img_tb_to = 450, 465
-img_tb_from, img_tb_to = 70, 86  # 50, 65
-n_eval_ex = 2000
+n_eval_ex = 512 if debug else 1100
 
-n_joints = 9
+n_joints = 9  # excluding "torso-joint", which is 10-th
 x_train, y_train, x_test, y_test = get_dataset()
 pairwise_distr_np = get_pairwise_distr()
 n_train, in_height, in_width, n_colors = x_train.shape[0:4]
 n_test, hm_height, hm_width = y_test.shape[0:3]
 if debug:
-    n_train, n_test = 512, 128  # for debugging purposes we take only a small subset
-    x_train, y_train, x_test, y_test = x_train[:n_train], y_train[:n_train], x_test[:n_test], y_test[:n_test]
+    n_train, n_test = 1024, 512  # for debugging purposes we take only a small subset
+    train_idx, test_idx = np.random.permutation(n_train), np.random.permutation(n_test)
+    x_train, y_train, x_test, y_test = x_train[train_idx], y_train[train_idx], x_test[test_idx], y_test[test_idx]
 # Main hyperparameters
-n_epochs = 30
+n_epochs = 30 if debug else 60
 batch_size = 16
-lmbd = 0.000
-lr, optimizer = 0.001, 'adam'  # So far best without BN: 0.001, 'adam'
+lmbd = 0.0001  # best: 0.1 for debug, and 0.0001
+lr, optimizer = 0.001, 'adam'  # best: 0.001, 'adam'
 n_updates_total = n_epochs * n_train // batch_size
 lr_decay_n_updates = [round(0.7 * n_updates_total), round(0.8 * n_updates_total), round(0.9 * n_updates_total)]
 lr_decay_coefs = [lr, lr / 2, lr / 5, lr / 10]
+img_tb_from = 70  # 50 or 450
+img_tb_to = img_tb_from + batch_size
 
 graph = tf.Graph()
 with graph.as_default(), tf.device('/cpu:0'):
     x_in = tf.placeholder(tf.float32, [None, in_height, in_width, n_colors], name='input_full')
-    pairwise_energies, pairwise_biases = {}, {}
-    for joint in joint_names:
-        for cond_joint in joint_dependence[joint]:
-            joint_key = joint + '_' + cond_joint
-            tensor = tf.convert_to_tensor(pairwise_distr_np[joint_key], dtype=tf.float32)
-            pairwise_energy_jj = tf.reshape(tensor, [1, tensor.shape[0].value, tensor.shape[1].value, 1])
-            pairwise_energies[joint_key] = tf.get_variable('energy_' + joint_key, initializer=pairwise_energy_jj)
-            pairwise_biases[joint_key] = bias_variable([1, hm_height, hm_width, 1], 0.0001, 'bias_' + joint_key)
-    y_in = tf.placeholder(tf.float32, [None, hm_height, hm_width, n_joints], name='heat_map')
+    if use_sm:
+        pairwise_energies, pairwise_biases = {}, {}
+        for joint in joint_names[:n_joints]:
+            for cond_joint in joint_dependence[joint]:
+                joint_key = joint + '_' + cond_joint
+                tensor = tf.convert_to_tensor(pairwise_distr_np[joint_key], dtype=tf.float32)
+                pairwise_energy_jj = tf.reshape(tensor, [1, tensor.shape[0].value, tensor.shape[1].value, 1])
+                pairwise_energies[joint_key] = tf.get_variable('energy_' + joint_key, initializer=pairwise_energy_jj)
+                pairwise_biases[joint_key] = bias_variable([1, hm_height, hm_width, 1], 0.0001, 'bias_' + joint_key)
+    y_in = tf.placeholder(tf.float32, [None, hm_height, hm_width, n_joints+1], name='heat_map')
     flag_train = tf.placeholder(tf.bool, name='is_training')
 
     n_iters_tf = tf.get_variable('n_iters', initializer=0, trainable=False)
-
     lr_tf = tf.train.piecewise_constant(n_iters_tf, lr_decay_n_updates, lr_decay_coefs)
 
     # Data augmentation: we apply the same random transformations both to images and heat maps
-    # x1, hm_target = tf.cond(flag_train, lambda: augmentation.augment_train(x_in, y_in), lambda: (x_in, y_in))
-    x_batch, hm_target_batch = x_in, y_in
+    if data_augm:
+        x_batch, hm_target_batch = tf.cond(flag_train, lambda: augm.augment_train(x_in, y_in),
+                                           lambda: augm.augment_test(x_in, y_in))
+    else:
+        x_batch, hm_target_batch = x_in, y_in
 
     if optimizer == 'adam':
         opt = tf.train.AdamOptimizer(lr_tf)
@@ -367,21 +388,32 @@ with graph.as_default(), tf.device('/cpu:0'):
                 hm_pred_pd = spatial_softmax(hm_pred_pd_logit)
                 hms_pred_pd.append(hm_pred_pd)
 
-                hm_pred_sm_logit = spatial_model(hm_pred_pd, pairwise_energies)
-                hm_pred_sm = spatial_softmax(hm_pred_sm_logit)
-                hms_pred_sm.append(hm_pred_sm)
+                if use_sm:
+                    # To disambiguate multiple people on the same image
+                    hm_pred_pd_with_torso = tf.concat([hm_pred_pd, hm_target[:, :, :, n_joints:]], axis=3)
+
+                    hm_pred_sm_logit = spatial_model(hm_pred_pd_with_torso)
+                    hm_pred_sm = spatial_softmax(hm_pred_sm_logit)
+                    hms_pred_sm.append(hm_pred_sm)
+                else:
+                    # for compatibility with Tensorboard, we should have this variable
+                    hm_pred_sm_logit, hm_pred_sm = hm_pred_pd_logit, hm_pred_pd
+                    hms_pred_sm.append(hm_pred_sm)
 
                 with tf.name_scope('loss'):
-                    mse_pd = mean_squared_error(hm_pred_pd, hm_target)
-                    mse_sm = mean_squared_error(hm_pred_sm, hm_target)
-                    loss_tower = mse_pd + mse_sm + lmbd * weight_decay(var_pattern='weights')
+                    loss_pd = cross_entropy(hm_pred_pd_logit, hm_target[:, :, :, :n_joints])
+                    loss_sm = cross_entropy(hm_pred_sm_logit, hm_target[:, :, :, :n_joints])
+                    loss_tower = loss_pd + loss_sm + lmbd * weight_decay(var_pattern='weights')
                     losses.append(loss_tower)
                     mses_pd.append(loss_tower)
                     mses_sm.append(loss_tower)
 
                 with tf.name_scope('evaluation'):
-                    det_rates_pd.append(evaluation.detection_rate(hm_pred_pd, hm_target, normalized_radius=10))
-                    det_rates_sm.append(evaluation.detection_rate(hm_pred_sm, hm_target, normalized_radius=10))
+                    joints_to_eval = [2, 5]  # 'all'
+                    wrist_det_rate10_pd = evaluation.det_rate(hm_pred_pd, hm_target[:, :, :, :n_joints], normalized_radius=10, joints=joints_to_eval)
+                    wrist_det_rate10_sm = evaluation.det_rate(hm_pred_sm, hm_target[:, :, :, :n_joints], normalized_radius=10, joints=joints_to_eval)
+                    det_rates_pd.append(wrist_det_rate10_pd)
+                    det_rates_sm.append(wrist_det_rate10_sm)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
@@ -390,8 +422,6 @@ with graph.as_default(), tf.device('/cpu:0'):
                 with tf.control_dependencies(update_ops):
                     # Calculate the gradients for the batch of data on this tower.
                     grads_vars_in_tower = opt.compute_gradients(loss_tower)
-
-                # TODO: maybe merge activation summaries
 
                 # Keep track of the gradients across all towers.
                 tower_grads.append(grads_vars_in_tower)
@@ -407,18 +437,26 @@ with graph.as_default(), tf.device('/cpu:0'):
     hms_pred_pd = tf.concat(hms_pred_pd, axis=0)
     hms_pred_sm = tf.concat(hms_pred_sm, axis=0)
 
-    train_step = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
+    apply_gradient_op = opt.apply_gradients(grads_vars, global_step=n_iters_tf)
+
+    # Track the moving averages of all trainable variables.
+    variable_averages = tf.train.ExponentialMovingAverage(0.99, n_iters_tf)
+    variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
+    # Group all updates to into a single train op.
+    train_step = tf.group(apply_gradient_op, variables_averages_op)
 
     tf.summary.image('input', x_batch, 30)
-    for key in pairwise_energies:
-        tf.summary.image('pairwise_potential_' + key, pairwise_energies[key], 30)
-        tf.summary.image('pairwise_biases_' + key, pairwise_biases[key], 30)
-        tb.var_summary(pairwise_energies[key], 'pairwise_energies_' + key)
-        tb.var_summary(pairwise_biases[key], 'pairwise_biases_' + key)
-    tb.main_summaries(grads_vars, mse_pd, mse_sm, det_rate_pd, det_rate_sm)
-    tb.show_img_plus_hm(x_batch, hm_target_batch, joint_names, in_height, in_width, 'target')
-    tb.show_img_plus_hm(x_batch, hms_pred_pd, joint_names, in_height, in_width, 'pred_part_detector')
-    tb.show_img_plus_hm(x_batch, hms_pred_sm, joint_names, in_height, in_width, 'pred_spatial_model')
+    if use_sm:
+        for key in pairwise_energies:
+            tf.summary.image('pairwise_potential_' + key, pairwise_energies[key], 30)
+            tf.summary.image('pairwise_biases_' + key, pairwise_biases[key], 30)
+            tb.var_summary(pairwise_energies[key], 'pairwise_energies_' + key)
+            tb.var_summary(pairwise_biases[key], 'pairwise_biases_' + key)
+    tb.main_summaries(grads_vars)
+    tb.show_img_plus_hm(x_batch, hm_target_batch[:, :, :, :n_joints], joint_names[:n_joints], in_height, in_width, 'target')
+    tb.show_img_plus_hm(x_batch, hms_pred_pd, joint_names[:n_joints], in_height, in_width, 'pred_part_detector')
+    tb.show_img_plus_hm(x_batch, hms_pred_sm, joint_names[:n_joints], in_height, in_width, 'pred_spatial_model')
 
     tb_merged = tf.summary.merge_all()
     train_iters_writer = tf.summary.FileWriter(tb_train_iter)
@@ -433,13 +471,8 @@ with tf.Session(config=config, graph=graph) as sess:
     if not restore_model:
         sess.run(tf.global_variables_initializer())
     else:
-        uninit_vars = []
-        for joint in joint_names:
-            for cond_joint in joint_dependence[joint]:
-                uninit_vars.append(pairwise_energies[joint + '_' + cond_joint])
-                uninit_vars.append(pairwise_biases[joint + '_' + cond_joint])
         saver.restore(sess, model_path + '/' + best_model_name)
-        sess.run(tf.variables_initializer(uninit_vars))
+        sess.run(tf.variables_initializer([n_iters_tf]))
 
     tb.run_summary(sess, train_writer, tb_merged, 0,
                    feed_dict={x_in:       x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to],
@@ -447,11 +480,14 @@ with tf.Session(config=config, graph=graph) as sess:
     tb.run_summary(sess, test_writer, tb_merged, 0,
                    feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
                               flag_train: False})
-    test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
     train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-    print('Epoch {:d}  test_dr {:.5f} {:.5f}  train_dr {:.5f} {:.5f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
+    test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
+    print('Epoch {:d}  test_dr {:.3f} {:.3f}  train_dr {:.3f} {:.3f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
         format(0, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
-
+    tb.write_summary(test_writer, [test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm],
+                     ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
+    tb.write_summary(train_writer, [train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm],
+                     ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
     if train:
         global_iter = 0
         for epoch in range(1, n_epochs + 1):
@@ -464,38 +500,30 @@ with tf.Session(config=config, graph=graph) as sess:
                 else:
                     sess.run(train_step, feed_dict={x_in: x_train_batch, y_in: y_train_batch, flag_train: True})
 
-            tb.run_summary(sess, train_writer, tb_merged, epoch,
-                           feed_dict={x_in:       x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to],
-                                      flag_train: False})
-            tb.run_summary(sess, test_writer, tb_merged, epoch,
-                           feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
-                                      flag_train: False})
-            # TODO: eval on the whole train/test
-            test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
+            tb.run_summary(sess, train_writer, tb_merged, epoch, feed_dict={
+                x_in: x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to], flag_train: False})
+            tb.run_summary(sess, test_writer, tb_merged, epoch, feed_dict={
+                x_in: x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to], flag_train: False})
             train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, batch_size)
-            print('Epoch {:d}  test_dr {:.5f} {:.5f}  train_dr {:.5f} {:.5f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
+            test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, batch_size)
+            print('Epoch {:d}  test_dr {:.3f} {:.3f}  train_dr {:.3f} {:.3f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
                   format(epoch, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
-        if not os.path.exists(model_path):
-            os.makedirs(model_path)
-        saver.save(sess, model_path + '/' + cur_timestamp)
+            tb.write_summary(test_writer, [test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm],
+                             ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], epoch)
+            tb.write_summary(train_writer, [train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm],
+                             ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], epoch)
+            # Save the model on each epoch after half of epochs are done
+            if epoch > n_epochs // 2:
+                if not os.path.exists(model_path):
+                    os.makedirs(model_path)
+                saver.save(sess, '{}/{}_epoch{}'.format(model_path, cur_timestamp, epoch))
 
     train_writer.close()
     test_writer.close()
     train_iters_writer.close()
 print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
 
-# TODO: turn on the weight decay
-# TODO: set up PGM part: first try the star model without trainable weight, and then try the trainable MRF
-
 # TODO: show a principled plot of test MSE between PD and SM.
-
-# Things that are not super important
-# TODO: data: handle multiple people by incorporating an extra "torso-joint heatmap" (page 6)
-# TODO: set up the option to continue training (since we should do it in 3 stages according to the paper)
-# TODO: local contrast normalization: http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf and
-# https://github.com/bowenbaker/metaqnn/blob/master/libs/input_modules/preprocessing.py
-# TODO: Data Augm.: try zero padding and random crops!
-# TODO: spatial dropout
 
 # Do for the final submission
 # TODO: a readme on how to run our code (1: download FLIC dataset, 2: data.py, 3: pariwise_distr.py, ...)
@@ -506,16 +534,20 @@ Structure:
 - Your approach
 - Results / Interpretation
 
+Idea: CNNs are great, but can't be easily controlled. We need to impose strong prior knowledge on the 
+relations between parts.
+
 
 To mention in the final report:
 - we do it much faster using BN
-- we use an auxiliary classifier (Inception style) to make both PD and SM perform well
+- we use an auxiliary classifier (Inception style or like in Fast R-CNN: "multi-task loss") to make both PD and SM perform well
 This goes in line with motivation from the paper.
 - thus we can train the model end-to-end from scratch and much faster (30 minutes instead of 60 hours)
 but we should train on FLIC+...
 - we provide understanding on what the model learns
 - we fix the mistakes from the paper and fill the gaps (leaves mixed feeling, how could it be that they mixed up
 the dimensions of the convolutions; if you really train model X, you just translate it to the description)
+- we show how can we improve the pairwise potentials if we optimize them.
 
 The paper leaves mixed feeling, especially because they didn't explain what their SM learn.
 On Fig. 5 they showed "a didactic example", which they most probably drew by hand.
@@ -523,10 +555,40 @@ It would be very interesting to see the pairwise heatmaps obtained after backpro
 Thus, our contribution is not only in practical implementation of the paper, but also in understanding what the proposed 
 model actually learns.
 
+We claim that their statement "The learned pair-wise distributions are purely uniform when any pairwise edge should to
+be removed from the graph structure" is wrong. Even connections that don't appear in a traditional star model are not 
+uniform. E.g. relation between lhip and rwri. Of course, their relative positions can vary a lot, but there are certainly 
+regions that have 0 probability (e.g. too far away): *show picture*
+
+Smart init makes sense: test_dr 0.2% 7.1% with random weights
+
+
+WD only over conv filters, since we observed that the highest values of pairwise potentials and biases are
+quite moderate, so it doesn't make sense to include WD there.
+
 Another contribution: we show how to perform joint training immediately with a single set of hps.
 
 softplus -> relu? no motivation why softplus is used
 
+Discuss the magnitude of grads wrt pairwise energies/biases (should be small => training is successful).
+
+Discuss that conv filters are like edge/color detectors.
+
+Cross entropy: much faster convergence.
+
+Eldar et. al (DeepCut): Hyperparameter search is very important (especially if the hps were not reported!).
+
+ResNets paper: use downsampling with the stride=2 in the beginning (unlike in the paper, we don't lose the information!).
+
+More advanced DA.
+
+SM takes half of the time needed for PD.
+
+Show evolution of pairwise potentials over iters (select from those that are arleady lwri|lelb. however, the role of
+pairwise pots is slightly less useful for LSP)
+
+
+We excluded self connections like face|face
 
 Boring but important implementation detail: BN is not so efficient in multi-gpu training. 
 
