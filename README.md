@@ -1,12 +1,13 @@
-## [Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation](http://papers.nips.cc/paper/5573-joint-training-of-a-convolutional-network-and-a-graphical-model-for-human-pose-estimation)
+## An implementation of ["Joint Training of a Convolutional Network and a Graphical Model for Human Pose Estimation](http://papers.nips.cc/paper/5573-joint-training-of-a-convolutional-network-and-a-graphical-model-for-human-pose-estimation)
 #### Maksym Andriushchenko, Fan Yue
 
 This is a TensorFlow implementation of [the paper](http://papers.nips.cc/paper/5573-joint-training-of-a-convolutional-network-and-a-graphical-model-for-human-pose-estimation), 
 which became quite influential in the human pose estimation task.
 
-Surprisingly, we didn't find any implementation in the internet. It can be explained by the fact that the original paper 
+<!-- Surprisingly, we didn't find any implementation in the internet. It can be explained by the fact that the original paper 
 doesn't list any hyperparameters and doesn't provide many implementation details. Thus, it is extremely hard to
 reproduce, and we decided to add reasonable modifications from the recent papers to improve the results.
+-->
 
 Here is an example of joints detection based on FLIC dataset:
 
@@ -35,7 +36,7 @@ TODO: convergence of the detection rate
 
 
 ## Difference from the paper
-Since the original paper was hard to reproduce, we introduced the following changes:
+Since the original paper was quite hard to reproduce, we introduced the following changes:
 - BN speeds up the convergence
 - Cross-entropy loss speeds up the convergence and improves the detection accuracy
 - Multi-task loss
@@ -47,7 +48,7 @@ Since the original paper was hard to reproduce, we introduced the following chan
 1. download FLIC dataset
 2. `data.py`
 3. `pairwise_distr.py`
-4. `python main.py --data_augm --use_sm --optimizer=adam --lr=0.001 --lmbd=0.0001`
+4. `python main.py --data_augm --use_sm --optimizer=adam --lr=0.001 --lmbd=0.0001 --n_epochs=60`
 
 
 Supported options:

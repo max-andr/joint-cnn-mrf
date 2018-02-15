@@ -19,7 +19,7 @@ def colorize(hm, joint_name):
 
 
 def get_var_by_name(var_name_to_find):
-    return [v for v in tf.trainable_variables() if v.name == var_name_to_find][0]
+    return [v for v in tf.global_variables() if v.name == var_name_to_find][0]
 
 
 def var_summary(var, name, baisc_name='pre_activ_'):
@@ -59,13 +59,13 @@ def main_summaries(grads_vars):
         # tf.summary.image('w_conv1', w_conv1_half_img, N_IMG_TO_SHOW)
 
 
-def show_img_plus_hm(x, hm, joint_ids, in_height, in_width, hm_name):
+def show_img_plus_hm(x, hm, joint_names, in_height, in_width, hm_name):
     # Adjust brightness of the image and feature map, so that the most bright pixel equals 1
     contrast_x = 1 / tf.reduce_max(x, axis=[1, 2, 3], keep_dims=True)
     contrast_hm = 1 / tf.reduce_max(hm, axis=[1, 2], keep_dims=True)
     hm_large = contrast_hm * tf.image.resize_images(hm, [in_height, in_width])
     img_plus_all_joints = contrast_x * x  # init before adding joints' hms in the loop
-    for joint_id, joint_name in enumerate(joint_ids):
+    for joint_id, joint_name in enumerate(joint_names):
         hm_cur_joint = colorize(hm_large[:, :, :, joint_id:joint_id + 1], joint_name)
         img_plus_joint = tf.minimum(x + hm_cur_joint, 1)
         tf.summary.image('hm_{}_{}'.format(hm_name, joint_name), img_plus_joint, N_IMG_TO_SHOW)

@@ -23,7 +23,7 @@ def det_rate(heat_map_pred, heat_map_target, normalized_radius=10, joints='all')
         coords_xy = tf.stack([coords_x, coords_y], axis=1)
         return tf.cast(coords_xy, tf.float32)
 
-    lhip_idx, rsho_idx = 6, 3
+    lhip_idx, rsho_idx = 0, 7  # according to Sapp: 6, 3
     pred_coords, true_coords = get_joints_coords(heat_map_pred), get_joints_coords(heat_map_target)
 
     torso_distance = tf.norm(true_coords[:, :, lhip_idx] - true_coords[:, :, rsho_idx], axis=1, keep_dims=True)  # [n_images]

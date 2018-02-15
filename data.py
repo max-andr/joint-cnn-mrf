@@ -66,6 +66,35 @@ def downsample_cube(myarr, factor, ignoredim=0):
     return dsarr
 
 
+def flip_backward_poses(flic_coords):
+    hip_left, hip_right = dict['lhip'], dict['rhip']
+    # if backward facing pose according to hips
+    if flic_coords[:, hip_left][0] < flic_coords[:, hip_right][0]:
+        for joint_left, joint_right in zip(['lwri', 'lelb', 'lhip', 'lsho'], ['rwri', 'relb', 'rhip', 'rsho']):
+            joint_left, joint_right = dict[joint_left], dict[joint_right]
+            coords_left_joint = flic_coords[:, joint_left]
+            coords_right_joint = flic_coords[:, joint_right]
+            flic_coords[:, joint_left] = coords_right_joint
+            flic_coords[:, joint_right] = coords_left_joint
+    return flic_coords
+
+
+def how_many_backward_poses():
+    # How many backward facing poses in the dataset
+    # left_id, right_id = dict['lwri'], dict['rwri']
+    left_id, right_id = dict['lhip'], dict['rhip']
+    s_frontal = 0
+    index = train_index
+    for i in index:
+        flic_coords = data_FLIC[i][2]
+        # flic_coords = flip_backward_poses(flic_coords)
+        coords_left = flic_coords[:, left_id] / 8
+        coords_right = flic_coords[:, right_id] / 8
+        s_frontal += coords_left[0] < coords_right[0]
+        # print(coords_left[0], coords_right[0])
+    print('frontal:', s_frontal, 'total:', len(index), 'fraction:', s_frontal/len(index))
+
+
 data_FLIC = loadmat('data_FLIC.mat')
 data_FLIC = data_FLIC['examples'][0]
 joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose']  # , 'leye', 'reye',
@@ -108,7 +137,6 @@ for i in test_index:
     img = img / 255
     x_test.append(img)
 x_test = np.array(x_test)
-
 print(x_train.shape, x_test.shape)
 print(type(x_train), type(x_test))
 np.save('x_train_flic', x_train)
@@ -119,10 +147,12 @@ np.save('x_test_flic', x_test)
 y_train_hmap = []
 for i in train_index:
     hmap = []
+    flic_coords = data_FLIC[i][2]
+    flic_coords = flip_backward_poses(flic_coords)
     for joint in joint_ids:
         print(joint)
         id = dict[joint]
-        coords = data_FLIC[i][2][:, id] / 8  # divided by 8
+        coords = flic_coords[:, id] / 8  # divided by 8
         coords[0] = round(coords[0])
         coords[1] = round(coords[1])
         if coords[0] > 90:
@@ -159,10 +189,12 @@ np.save('y_train_flic', y_train_hmap)
 y_test_hmap = []
 for i in test_index:
     hmap = []
+    flic_coords = data_FLIC[i][2]
+    flic_coords = flip_backward_poses(flic_coords)
     for joint in joint_ids:
         print(joint)
         id = dict[joint]
-        coords = data_FLIC[i][2][:, id] / 8  # divided by 8
+        coords = flic_coords[:, id] / 8  # divided by 8
         coords[0] = round(coords[0])
         coords[1] = round(coords[1])
         if coords[0] > 90:
