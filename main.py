@@ -4,6 +4,9 @@ import os
 import tensorflow as tf
 import time
 import pickle
+import scipy.io
+import skimage.transform
+import matplotlib.pyplot as plt
 
 import augmentation as augm
 import evaluation
@@ -324,14 +327,116 @@ def get_gpu_memory(gpus):
         return 0.7
 
 
+def get_different_scales(x, pad_array, crop_array, orig_h, orig_w):
+    x_new = []
+    for pad_c in pad_array:
+        n_pad_h = round(orig_h * (pad_c - 1) / 2)
+        n_pad_w = round(orig_w * (pad_c - 1) / 2)
+        x_pad = np.lib.pad(x, ((n_pad_h, n_pad_h), (n_pad_w, n_pad_w), (0, 0)), 'constant', constant_values=0)
+        x_orig_size = skimage.transform.resize(x_pad, (orig_h, orig_w))
+        x_new.append(x_orig_size)
+    for crop_c in crop_array:
+        h1 = round((1-crop_c)/2*orig_h)
+        h2 = h1 + round(crop_c*orig_h)
+        w1 = round((1-crop_c)/2*orig_w)
+        w2 = w1 + round(crop_c*orig_w)
+        x_crop = x[h1:h2, w1:w2]
+        x_orig_size = skimage.transform.resize(x_crop, (orig_h, orig_w))
+        x_new.append(x_orig_size)
+
+    # for i in range(9):
+    #     plt.figure(i)
+    #     plt.imshow(x_new[i])
+    #     plt.savefig('img/img_'+str(i)+'.png', dpi=300)
+    #     plt.clf()
+    return np.array(x_new)
+
+
+def scale_hm_back(hms, pad_array, crop_array, orig_h, orig_w):
+    x_new = []
+    for i, crop_c in enumerate(pad_array):
+        crop_c = 1 / crop_c
+        h1 = round((1-crop_c)/2*orig_h)
+        h2 = h1 + round(crop_c*orig_h)
+        w1 = round((1-crop_c)/2*orig_w)
+        w2 = w1 + round(crop_c*orig_w)
+        x_crop = hms[i][h1:h2, w1:w2]
+        x_orig_size = skimage.transform.resize(x_crop, (orig_h, orig_w))
+        x_new.append(x_orig_size)
+
+    for i, pad_c in enumerate(crop_array):
+        pad_c = 1 / pad_c
+        n_pad_h = round(orig_h * (pad_c - 1) / 2)
+        n_pad_w = round(orig_w * (pad_c - 1) / 2)
+        x_pad = np.lib.pad(hms[i+len(pad_array)], ((n_pad_h, n_pad_h), (n_pad_w, n_pad_w), (0, 0)), 'constant', constant_values=0)
+        x_orig_size = skimage.transform.resize(x_pad, (orig_h, orig_w))
+        x_new.append(x_orig_size)
+
+    # for i in range(9):
+    #     plt.figure(i)
+    #     plt.imshow(x_new[i][:, :, 8])
+    #     plt.savefig('img/img_'+str(i)+'_processed.png', dpi=300)
+    #     plt.clf()
+    #     plt.imshow(hms[i][:, :, 8])
+    #     plt.savefig('img/img_'+str(i)+'_orig.png', dpi=300)
+    #     plt.clf()
+    return np.array(x_new)
+
+
+def get_predictions(X_np, Y_np, sess):
+    """Get all predictions for a dataset by running it in small batches."""
+    def argmax_hm(hm):
+        hm = np.squeeze(hm)
+        hm = np.reshape(hm, [hm_height * hm_width, n_joints])
+        coords_raw = np.argmax(hm, axis=0)  # [n_images, n_joints]
+        # Now we obtain real spatial coordinates for each image and for each joint
+        coords_x = coords_raw // hm_width
+        coords_y = coords_raw - coords_x * hm_width
+        coords_xy = np.stack([coords_x, coords_y], axis=0)
+        return coords_xy
+
+    n = 1100
+    X_np, Y_np = X_np[:n], Y_np[:n]
+    drs_pd, drs_sm, pred_coords_pd, pred_coords_sm = [], [], [], []
+    # pad_array, crop_array = [1.0], [1.0]  # 65.16%
+    # pad_array, crop_array = [1.0], [0.6, 0.75, 0.9]
+    # pad_array, crop_array = [1.2, 1.4, 1.6], [1.0]
+    # pad_array, crop_array = [1.2, 1.4, 1.6], [0.6, 0.8, 1.0]
+    pad_array, crop_array = [1.2, 1.4, 1.5], [0.7, 0.8, 1.0]  # 71.1%
+    # pad_array, crop_array = [1.2, 1.4, 1.6, 1.8, 2.0], [0.4, 0.6, 0.8, 1.0]  # 70.2%
+    for x_np, y_np in zip(X_np, Y_np):
+        x_np_diff_scales = get_different_scales(x_np, pad_array, crop_array, in_height, in_width)
+        y_np = np.repeat(np.expand_dims(y_np, 0), x_np_diff_scales.shape[0], axis=0)
+        hm_pd_np, hm_sm_np = sess.run([hm_pred_pd, hm_pred_sm], feed_dict={x_in: x_np_diff_scales, y_in: y_np, flag_train: False})
+        hm_pd_np = scale_hm_back(hm_pd_np, pad_array, crop_array, hm_height, hm_width)
+        hm_sm_np = scale_hm_back(hm_sm_np, pad_array, crop_array, hm_height, hm_width)
+        # argmax over 1st dimension to get the most confident prediction for each joint
+        # hm_pd_np = np.max(hm_pd_np, axis=0, keepdims=True)
+        # hm_sm_np = np.max(hm_sm_np, axis=0, keepdims=True)
+
+        hm_pd_np = np.expand_dims(np.average(hm_pd_np, axis=0), 0)
+        hm_sm_np = np.expand_dims(np.average(hm_sm_np, axis=0), 0)
+
+        pred_coords_pd.append(argmax_hm(hm_pd_np))
+        pred_coords_sm.append(argmax_hm(hm_sm_np))
+
+        # input aggregated hm and get det_rate
+        dr_pd, dr_sm = sess.run([wrist_det_rate10_pd, wrist_det_rate10_sm],
+                                feed_dict={hm_pred_pd: hm_pd_np, hm_pred_sm: hm_sm_np, y_in: y_np, flag_train: False})
+        drs_pd.append(dr_pd)
+        drs_sm.append(dr_sm)
+    print('test_dr: {} {}'.format(np.average(drs_pd), np.average(drs_sm)))
+    return np.stack(pred_coords_pd, axis=2), np.stack(pred_coords_sm, axis=2)
+
+
 parser = argparse.ArgumentParser(description='Define hyperparameters.')
 parser.add_argument('--debug', action='store_true', help='True if we want to debug.')
 parser.add_argument('--train', action='store_true', help='True if we want to train the model.')
-parser.add_argument('--gpus', nargs='+', type=int, default=[1], help='GPU indices.')
+parser.add_argument('--gpus', nargs='+', type=int, default=[6], help='GPU indices.')
 parser.add_argument('--restore', action='store_true', help='True if we want to restore the model.')
 parser.add_argument('--use_sm', action='store_true', help='True if we want to use the Spatial Model.')
 parser.add_argument('--data_augm', action='store_true', help='True if we want to use data augmentation.')
-parser.add_argument('--n_epochs', type=int, default=60, help='Number of epochs.')
+parser.add_argument('--n_epochs', type=int, default=100, help='Number of epochs.')
 parser.add_argument('--batch_size', type=int, default=14, help='Batch size.')
 parser.add_argument('--optimizer', type=str, default='adam', help='momentum or adam')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
@@ -339,18 +444,18 @@ parser.add_argument('--lmbd', type=float, default=0.001, help='Regularization co
 hps = parser.parse_args()  # returns a Namespace object, new fields can be set like hps.abc = 10
 
 train_pd = True
-# hps.debug = False
-# hps.train = True
-# hps.restore = True
-# hps.use_sm = True
-# hps.data_augm = False
-# hps.n_epochs = 20
-# hps.lr = 0.001
-# hps.optimizer = 'adam'
+hps.debug = True
+hps.train = True
+hps.restore = False
+hps.use_sm = True
+hps.data_augm = False
+hps.n_epochs = 10
+hps.lr = 0.001
+hps.optimizer = 'adam'
 print(hps)
 
 gpu_memory = get_gpu_memory(hps.gpus)
-best_model_name = '2018-02-14 22:17:35_lr=0.001_lambda=0.001_bs=20-56'  # Best PD only: '2018-02-13 20:55:27_lr=0.001_lambda=0.001_bs=10_epoch59'  # Joint training best: '2018-02-13 12:22:01_epoch56'
+best_model_name = '2018-02-14 22:17:35_lr=0.001_lambda=0.001_bs=14-56'  # Best PD only: '2018-02-13 20:55:27_lr=0.001_lambda=0.001_bs=10_epoch59'  # Joint training best: '2018-02-13 12:22:01_epoch56'
 model_path = 'models_ex'
 time_start = time.time()
 cur_timestamp = str(datetime.now())[:-7]  # get rid of milliseconds
@@ -361,7 +466,7 @@ tb_train = '{}/{}/train'.format(tb_folder, model_name)
 tb_test = '{}/{}/test'.format(tb_folder, model_name)
 tb_log_iters = False
 n_eval_ex = 512 if hps.debug else 1100
-joints_to_eval = [2]  # 2 - left wrist, 5 - right wrist, 'all' - all joints
+joints_to_eval = [2]  # 2 - left wrist, 5 - right wrist, 8 - nose, 'all' - all joints
 det_radius = 10
 
 n_joints = 9  # excluding "torso-joint", which is 10-th
@@ -377,7 +482,7 @@ if hps.debug:
 n_updates_total = hps.n_epochs * n_train // hps.batch_size
 lr_decay_n_updates = [round(0.7 * n_updates_total), round(0.8 * n_updates_total), round(0.9 * n_updates_total)]
 lr_decay_coefs = [hps.lr, hps.lr / 2, hps.lr / 5, hps.lr / 10]
-img_tb_from = 380  # 50 or 450
+img_tb_from = 170  # 50 or 450
 img_tb_to = img_tb_from + hps.batch_size
 
 graph = tf.Graph()
@@ -509,7 +614,8 @@ with graph.as_default(), tf.device('/cpu:0'):
     train_writer = tf.summary.FileWriter(tb_train, flush_secs=30)
     test_writer = tf.summary.FileWriter(tb_test, flush_secs=30)
 
-    saver = tf.train.Saver(var_list=[v for v in tf.global_variables() if 'bn_sm' not in v.name])
+    saver_old = tf.train.Saver(var_list=[v for v in tf.global_variables() if 'bn_sm' not in v.name])
+    saver = tf.train.Saver()
 
 gpu_options = tf.GPUOptions(visible_device_list=str(hps.gpus)[1:-1], per_process_gpu_memory_fraction=gpu_memory)
 config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
@@ -517,27 +623,32 @@ with tf.Session(config=config, graph=graph) as sess:
     if not hps.restore:
         sess.run(tf.global_variables_initializer())
     else:
-        saver.restore(sess, model_path + '/' + best_model_name)
-        vars_to_init = [var for var in tf.global_variables() if 'energy' in var.op.name or 'bias_' in var.op.name
-                        or 'bn_sm' in var.op.name]
+        saver_old.restore(sess, model_path + '/' + best_model_name)
+        # vars_to_init = [var for var in tf.global_variables() if 'energy' in var.op.name or 'bias_' in var.op.name]
+        vars_to_init = [var for var in tf.global_variables() if 'bn_sm' in var.op.name]
         sess.run(tf.variables_initializer(vars_to_init + [n_iters_tf]))
         print('trainable:', tf.trainable_variables(), sep='\n')
 
-    tb.run_summary(sess, train_writer, tb_merged, 0,
-                   feed_dict={x_in:       x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to],
-                              flag_train: False})
-    tb.run_summary(sess, test_writer, tb_merged, 0,
-                   feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
-                              flag_train: False})
-    train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex], sess, hps.batch_size)
-    test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess, hps.batch_size)
-    print('Epoch {:d}  test_dr {:.3f} {:.3f}  train_dr {:.3f} {:.3f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
-        format(0, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd, train_mse_sm))
-    tb.write_summary(test_writer, [test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm],
-                     ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
-    tb.write_summary(train_writer, [train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm],
-                     ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
     if hps.train:
+        tb.run_summary(sess, train_writer, tb_merged, 0,
+                       feed_dict={x_in:       x_train[img_tb_from:img_tb_to], y_in: y_train[img_tb_from:img_tb_to],
+                                  flag_train: False})
+        tb.run_summary(sess, test_writer, tb_merged, 0,
+                       feed_dict={x_in:       x_test[img_tb_from:img_tb_to], y_in: y_test[img_tb_from:img_tb_to],
+                                  flag_train: False})
+        train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm = eval_error(x_train[:n_eval_ex], y_train[:n_eval_ex],
+                                                                          sess, hps.batch_size)
+        test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm = eval_error(x_test[:n_eval_ex], y_test[:n_eval_ex], sess,
+                                                                      hps.batch_size)
+        print(
+            'Epoch {:d}  test_dr {:.3f} {:.3f}  train_dr {:.3f} {:.3f}  test_mse {:.5f} {:.5f}  train_mse {:.5f} {:.5f}'.
+            format(0, test_dr_pd, test_dr_sm, train_dr_pd, train_dr_sm, test_mse_pd, test_mse_sm, train_mse_pd,
+                   train_mse_sm))
+        tb.write_summary(test_writer, [test_mse_pd, test_mse_sm, test_dr_pd, test_dr_sm],
+                         ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
+        tb.write_summary(train_writer, [train_mse_pd, train_mse_sm, train_dr_pd, train_dr_sm],
+                         ['main/mse_pd', 'main/mse_sm', 'main/det_rate_pd', 'main/det_rate_sm'], 0)
+
         global_iter = 0
         for epoch in range(1, hps.n_epochs + 1):
             for x_train_batch, y_train_batch in get_next_batch(x_train, y_train, hps.batch_size, shuffle=True):
@@ -566,9 +677,13 @@ with tf.Session(config=config, graph=graph) as sess:
                 if not os.path.exists(model_path):
                     os.makedirs(model_path)
                 saver.save(sess, '{}/{}'.format(model_path, model_name), global_step=epoch)
-
+    else:
+        pred_coords_pd, pred_coords_sm = get_predictions(x_test, y_test, sess)
+        scipy.io.savemat('matlab/predictions.mat', {'flic_pred_pd': pred_coords_pd,
+                                                    'flic_pred_sm': pred_coords_sm})
     train_writer.close()
     test_writer.close()
     train_iters_writer.close()
 print('Done in {:.2f} min\n\n'.format((time.time() - time_start) / 60))
+
 
