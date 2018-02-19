@@ -34,13 +34,14 @@ with open('pairwise_distribution.pickle', 'rb') as handle:
     pairwise_distribution = pickle.load(handle)
 
 import matplotlib.pyplot as plt
-plt.figure(1)
-plt.imshow((img))
-plt.figure(2)
-plt.imshow((hmap))
-plt.figure(3)
-plt.imshow((pairwise_distribution['lwri_torso']))
-plt.show()
+# plt.figure(1)
+# plt.imshow((img))
+# plt.figure(2)
+# plt.imshow((hmap))
+for name in ['nose_torso', 'rsho_torso', 'relb_torso', 'rwri_torso', 'rhip_torso']:
+    plt.imshow(pairwise_distribution[name])
+    plt.savefig('img/0epoch_' + name + '.png', dpi=300)
+    plt.clf()
 
 ### The second part
 n_joint = 9  # the number of joint that you want to display

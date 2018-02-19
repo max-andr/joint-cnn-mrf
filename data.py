@@ -1,53 +1,19 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 from scipy.io import loadmat
-from scipy import misc
+import matplotlib.pyplot as plt
 import numpy as np
+import imageio
+import skimage.transform
 
 """
 This script generate the x_train, x_test, y_train, y_test for the further process from the FLIC dataset.
 
-x_train, x_test is [, 360, 240, 3], type = float32, pixels are from 0 to 1
+x_train, x_test is [n, 480, 720, 3], type = float32, pixels are from 0 to 1
 
-y_train, y_test is [, 90, 60, 11], type = float32
+y_train, y_test is [n, 60, 90, 10], type = float32
 
-There're 3987 for training and 1016 for testing
+There're 3987 for training and 1016 for testing.
+Note, that "torso-joint" is included as well. For the details why we need it, please read the original paper.
 """
-
-
-def creat_torso_hm(torsobox, kernel, temp, pad):
-    """
-    :param torsobox: is a 4 x 1 vector, (1st, 2st) is the loc of the top left corner of the box
-                    (3rd, 4th) is the bottom right corner of the box
-    """
-    coords = np.ndarray(shape=(2,), dtype=float)
-    coords[0] = (torsobox[0] + torsobox[2]) / 2  # maybe I need to exchange the coords0 and 1
-    coords[1] = (torsobox[1] + torsobox[3]) / 2
-    print(coords)
-    coords[0] = round(coords[0])
-    coords[1] = round(coords[1])
-    if coords[0] > 90:
-        coords[0] = 90
-    if coords[0] < 0:
-        coords[0] = 0
-    if coords[1] > 60:
-        coords[1] = 60
-    if coords[1] < 0:
-        coords[1] = 0
-    print(coords)
-    heat_map = np.zeros([90, 60], dtype=np.float32)  # 90 by 60
-    heat_map = np.lib.pad(heat_map, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
-    # print(heat_map.shape)
-    # print(data_FLIC[i][2][:, id])
-    # print(i, joint)
-    coords = coords + pad
-    heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
-             int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
-    # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
-    heat_map = heat_map[pad:pad + 90, pad:pad + 60]
-    return heat_map
 
 
 def downsample_cube(myarr, factor, ignoredim=0):
@@ -67,6 +33,10 @@ def downsample_cube(myarr, factor, ignoredim=0):
 
 
 def flip_backward_poses(flic_coords):
+    """
+    Flip left and right parts of backward facing people. It's used by Tompson et al. 2014 in their evaluation scripts.
+    Looks like a cheating, but they claim that other people also use (used) this scheme.
+    """
     hip_left, hip_right = dict['lhip'], dict['rhip']
     # if backward facing pose according to hips
     if flic_coords[:, hip_left][0] < flic_coords[:, hip_right][0]:
@@ -80,7 +50,9 @@ def flip_backward_poses(flic_coords):
 
 
 def how_many_backward_poses():
-    # How many backward facing poses in the dataset
+    """
+    How many backward facing poses in the dataset.
+    """
     # left_id, right_id = dict['lwri'], dict['rwri']
     left_id, right_id = dict['lhip'], dict['rhip']
     s_frontal = 0
@@ -92,136 +64,131 @@ def how_many_backward_poses():
         coords_right = flic_coords[:, right_id] / 8
         s_frontal += coords_left[0] < coords_right[0]
         # print(coords_left[0], coords_right[0])
-    print('frontal:', s_frontal, 'total:', len(index), 'fraction:', s_frontal/len(index))
+    print('frontal:', s_frontal, 'total:', len(index), 'fraction:', s_frontal / len(index))
 
 
-data_FLIC = loadmat('data_FLIC.mat')
-data_FLIC = data_FLIC['examples'][0]
-joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose']  # , 'leye', 'reye',
-dict = {'lsho':   0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
-        'lkne':   7, 'lank': 8, 'rhip': 9, 'rkne': 10, 'rank': 11, 'leye': 12, 'reye': 13,
-        'lear':   14, 'rear': 15, 'nose': 16, 'msho': 17, 'mhip': 18, 'mear': 19, 'mtorso': 20,
-        'mluarm': 21, 'mruarm': 22, 'mllarm': 23, 'mrlarm': 24, 'mluleg': 25, 'mruleg': 26,
-        'mllleg': 27, 'mrlleg': 28}
-is_train = [data_FLIC[i][7][0, 0] for i in range(len(data_FLIC))]
-is_train = np.array(is_train)
-train_index = list(np.where(is_train == 1))[0]
-test_index = list(np.array(np.where(is_train == 0)))[0]
-print(len(train_index), len(test_index))
-# coefs = np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]], dtype=np.float32) / 256
-# coefs = np.array([[1, 4, 6, 4, 1]], dtype=np.float32) / 16
-coefs = np.array([[1, 2, 1]], dtype=np.float32) / 4  # best!
-# coefs = np.array([[1]])
-kernel = coefs.T @ coefs
-temp = round((len(kernel) - 1) / 2)
-print(temp)
-pad = 5  # use padding to avoid the exceeding of the boundary
+def distances_hip_sho():
+    """
+    Show the distribution of torso heights.
+    """
+    index = train_index
+    distances = []
+    for i in index:
+        flic_coords = data_FLIC[i][2]
+        # flic_coords = flip_backward_poses(flic_coords)
+        rhip = flic_coords[:, dict['rhip']]
+        rsho = flic_coords[:, dict['rsho']]
+        dist = np.sum((rhip - rsho) ** 2) ** 0.5
+        distances.append(dist)
+    distances = np.array(distances)
+    print(np.min(distances), np.median(distances), np.max(distances))
+    plt.hist(distances)
 
-### This part is for x_train
-x_train = []
-for i in train_index:
-    img = misc.imread('./images_FLIC/' + data_FLIC[i][3][0])
-    # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
-    img = img.astype(np.float32)
-    img = img / 255
 
-    x_train.append(img)
-x_train = np.array(x_train)
+if __name__ == '__main__':
+    # We tried a similar data preparation mentioned in "Learning human pose estimation features with convolutional
+    # networks" (ICLR 2014) It unifies the scale on the training data, which seems as a good idea for the
+    # scale-dependent spatial model.
+    # However, it does not lead to improvements. So our recommendation is to set iclr_data_preparation = False.
+    iclr_data_preparation = False
+    data_FLIC = loadmat('data_FLIC.mat')
+    data_FLIC = data_FLIC['examples'][0]
+    joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose']  # , 'leye', 'reye',
+    dict = {'lsho':   0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
+            'lkne':   7, 'lank': 8, 'rhip': 9, 'rkne': 10, 'rank': 11, 'leye': 12, 'reye': 13,
+            'lear':   14, 'rear': 15, 'nose': 16, 'msho': 17, 'mhip': 18, 'mear': 19, 'mtorso': 20,
+            'mluarm': 21, 'mruarm': 22, 'mllarm': 23, 'mrlarm': 24, 'mluleg': 25, 'mruleg': 26,
+            'mllleg': 27, 'torso': 28}
+    is_train = [data_FLIC[i][7][0, 0] for i in range(len(data_FLIC))]
+    is_train = np.array(is_train)
+    train_index = list(np.where(is_train == 1))[0]
+    test_index = list(np.array(np.where(is_train == 0)))[0]
+    print('# train indices:', len(train_index), '  # test indices:', len(test_index))
+    # coefs = np.array([[1, 8, 28, 56, 70, 56, 28, 8, 1]], dtype=np.float32) / 256
+    # coefs = np.array([[1, 4, 6, 4, 1]], dtype=np.float32) / 16
+    coefs = np.array([[1, 2, 1]], dtype=np.float32) / 4  # maximizes performance
+    # coefs = np.array([[1]])
+    kernel = coefs.T @ coefs
+    temp = round((len(kernel) - 1) / 2)
+    pad = 5  # use padding to avoid the exceeding of the boundary
 
-### This part is for x_test
-x_test = []
-for i in test_index:
-    img = misc.imread('./images_FLIC/' + data_FLIC[i][3][0])
-    # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
-    img = img.astype(np.float32)
-    img = img / 255
-    x_test.append(img)
-x_test = np.array(x_test)
-print(x_train.shape, x_test.shape)
-print(type(x_train), type(x_test))
-np.save('x_train_flic', x_train)
-np.save('x_test_flic', x_test)
+    # This part is for x_train and x_test
+    orig_h, orig_w = 480, 720
+    mode_height = 127.0  # roughly mode of the distribution of ||rhip - rsho||_2
+    x_train, x_test, y_train_hmap, y_test_hmap = [], [], [], []
+    for x, x_name, hmaps, hmaps_name, index in zip([x_train, x_test], ['x_train_flic', 'x_test_flic'], [y_train_hmap, y_test_hmap],
+                                                   ['y_train_flic', 'y_test_flic'], [train_index, test_index]):
+        for i in index:
+            flic_coords = data_FLIC[i][2]
+            flic_coords = flip_backward_poses(flic_coords)
 
-### This part is for y_train
-# i = 0
-y_train_hmap = []
-for i in train_index:
-    hmap = []
-    flic_coords = data_FLIC[i][2]
-    flic_coords = flip_backward_poses(flic_coords)
-    for joint in joint_ids:
-        print(joint)
-        id = dict[joint]
-        coords = flic_coords[:, id] / 8  # divided by 8
-        coords[0] = round(coords[0])
-        coords[1] = round(coords[1])
-        if coords[0] > 90:
-            coords[0] = 90
-        if coords[0] < 0:
-            coords[0] = 0
-        if coords[1] > 60:
-            coords[1] = 60
-        if coords[1] < 0:
-            coords[1] = 0
+            img = imageio.imread('./images_FLIC/' + data_FLIC[i][3][0])
+            # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
+            img = img.astype(np.float32)
+            img = img / 255
 
-        heat_map = np.zeros([90, 60], dtype=np.float32)  # 90 by 60
-        heat_map = np.lib.pad(heat_map, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
-        # print(heat_map.shape)
-        # print(data_FLIC[i][2][:, id])
-        print(i, joint)
-        coords = coords + pad
-        print(coords)
-        heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
-                 int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
-        # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
-        heat_map = heat_map[pad:pad + 90, pad:pad + 60]
-        print(heat_map.shape)
-        hmap.append(heat_map)
-    hmap.append(creat_torso_hm(data_FLIC[i][6][0] / 8, kernel, temp, pad))
-    hmap = np.array(hmap)
-    hmap = hmap.swapaxes(0, 2)
-    y_train_hmap.append(hmap)
-y_train_hmap = np.array(y_train_hmap)
-print(y_train_hmap.shape)
-np.save('y_train_flic', y_train_hmap)
+            # if training set
+            if 'train' in x_name and iclr_data_preparation:
+                # center of torso
+                center = (flic_coords[:, dict['lsho']] + flic_coords[:, dict['rhip']] + flic_coords[:, dict['rsho']] +
+                          flic_coords[:, dict['lhip']]) / 4
+                center = (float(center[1]), float(center[0]))
+                cur_height = np.sum((flic_coords[:, dict['rhip']] - flic_coords[:, dict['rsho']]) ** 2) ** 0.5
+                scale = float(cur_height / mode_height)
 
-### This part is for y_test
-y_test_hmap = []
-for i in test_index:
-    hmap = []
-    flic_coords = data_FLIC[i][2]
-    flic_coords = flip_backward_poses(flic_coords)
-    for joint in joint_ids:
-        print(joint)
-        id = dict[joint]
-        coords = flic_coords[:, id] / 8  # divided by 8
-        coords[0] = round(coords[0])
-        coords[1] = round(coords[1])
-        if coords[0] > 90:
-            coords[0] = 90
-        if coords[0] < 0:
-            coords[0] = 0
-        if coords[1] > 60:
-            coords[1] = 60
-        if coords[1] < 0:
-            coords[1] = 0
-        print(coords)
-        heat_map = np.zeros([90, 60], dtype=np.float32)  # 90 by 60
-        heat_map = np.lib.pad(heat_map, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
-        # print(heat_map.shape)
-        # print(data_FLIC[i][2][:, id])
-        # print(i, joint)
-        coords = coords + pad
-        heat_map[int(round(coords[0] - temp)):int(round(coords[0] + temp + 1)),
-                 int(round(coords[1] - temp)):int(round(coords[1] + temp + 1))] = kernel
-        # a = heat_map[327-4:327+4+1, 213-4:213+4+1]
-        heat_map = heat_map[pad:pad + 90, pad:pad + 60]
-        print(heat_map.shape)
-        hmap.append(heat_map)
-    hmap.append(creat_torso_hm(data_FLIC[i][6][0] / 8, kernel, temp, pad))
-    hmap = np.array(hmap)
-    hmap = hmap.swapaxes(0, 2)
-    y_test_hmap.append(hmap)
-y_test_hmap = np.array(y_test_hmap)
-print(y_test_hmap.shape)
-np.save('y_test_flic', y_test_hmap)
+                h1 = (1 - scale) / 2 * orig_h
+                h2 = h1 + scale * orig_h
+                w1 = (1 - scale) / 2 * orig_w
+                w2 = w1 + scale * orig_w
+                diff = [center[0] - orig_h / 2,
+                        center[1] - orig_w / 2]  # diff between real center of human and center (480/2, 720/2)
+                h1, h2 = round(h1 + diff[0]), round(h2 + diff[0])
+                w1, w2 = round(w1 + diff[1]), round(w2 + diff[1])
+
+                # but some coords h1,h2,w1,w2 can be negative => we need padding
+                pad_h = max(0, -h1), max(h2 - orig_h, 0)
+                pad_w = max(0, -w1), max(w2 - orig_w, 0)
+                img_pad = np.pad(img, (pad_h, pad_w, (0, 0)), 'constant', constant_values=0)
+                print('Before padding:', img.shape, '   after padding:', img_pad.shape)
+                # changes are needed if we effectively changed our origin (after padding)
+                h1, h2 = h1 + pad_h[0], h2 + pad_h[0]
+                w1, w2 = w1 + pad_w[0], w2 + pad_w[0]
+                img_crop = img_pad[h1:h2, w1:w2]
+                img_final = skimage.transform.resize(img_crop, (orig_h, orig_w))
+                x.append(img_final)
+            else:
+                x.append(img)
+
+            hmap = []
+            torso = (flic_coords[:, dict['lsho']] + flic_coords[:, dict['rhip']] + flic_coords[:, dict['rsho']] +
+                     flic_coords[:, dict['lhip']]) / 4
+            flic_coords[:, dict['torso']] = torso
+            for joint in joint_ids + ['torso']:
+                coords = np.copy(flic_coords[:, dict[joint]])
+                # there are some annotation that are outside of the image (annotators did a great job!)
+                coords[0], coords[1] = max(min(coords[1], orig_h), 0), max(min(coords[0], orig_w), 0)
+
+                # Now we need y coordinates also to match
+                if 'train' in x_name and iclr_data_preparation:
+                    coords[0] = (coords[0] + pad_h[0] - h1) * img_final.shape[0] / img_crop.shape[0]
+                    coords[1] = (coords[1] + pad_w[0] - w1) * img_final.shape[1] / img_crop.shape[1]
+
+                coords /= 8
+                heat_map = np.zeros([60, 90], dtype=np.float32)
+                heat_map = np.lib.pad(heat_map, ((pad, pad), (pad, pad)), 'constant', constant_values=0)
+                coords = coords + pad
+                h1_k, h2_k = int(coords[0] - temp), int(coords[0] + temp + 1)
+                w1_k, w2_k = int(coords[1] - temp), int(coords[1] + temp + 1)
+                heat_map[h1_k:h2_k, w1_k:w2_k] = kernel
+                heat_map = heat_map[pad:pad + 60, pad:pad + 90]
+                hmap.append(heat_map)
+            hmap = np.stack(hmap, axis=2)
+            hmaps.append(hmap)
+        x = np.array(x, dtype=np.float32)
+        np.save(x_name, x)
+        print('Saved:', x_name, x.shape)
+
+        hmaps = np.array(hmaps, dtype=np.float32)
+        np.save(hmaps_name, hmaps)
+        print('Saved:', hmaps_name, hmaps.shape)
+

@@ -10,6 +10,8 @@
 *.nav
 *.snm
 *.toc
+*.bbl
+*.blg
 
 .idea/
 FLIC/

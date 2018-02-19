@@ -1,3 +1,74 @@
+With new dataset:
+Epoch 0  test_dr 0.000 0.794  train_dr 0.198 1.786  test_mse 8.61528 8.58898  train_mse 8.62022 8.59262
+Epoch 1  test_dr 15.476 15.873  train_dr 36.706 36.706  test_mse 7.52835 7.25400  train_mse 4.17397 5.56644
+Epoch 2  test_dr 16.865 15.675  train_dr 50.794 49.405  test_mse 7.90078 6.97844  train_mse 3.70297 4.42320
+Epoch 3  test_dr 18.254 18.254  train_dr 64.881 65.873  test_mse 8.39269 7.02307  train_mse 3.26297 3.70741
+Epoch 4  test_dr 18.254 18.651  train_dr 79.167 76.984  test_mse 8.39787 6.90702  train_mse 2.98546 3.25883
+Epoch 5  test_dr 15.873 16.468  train_dr 91.468 92.460  test_mse 9.48814 6.97696  train_mse 2.74269 2.90476
+Epoch 6  test_dr 19.444 19.841  train_dr 97.024 95.635  test_mse 8.88643 6.84022  train_mse 2.62723 2.73492
+Epoch 7  test_dr 18.452 20.040  train_dr 99.603 98.810  test_mse 8.66152 6.71698  train_mse 2.54862 2.62100
+Epoch 8  test_dr 18.056 19.246  train_dr 98.810 99.206  test_mse 8.78981 6.80892  train_mse 2.47523 2.52463
+Epoch 9  test_dr 21.429 21.825  train_dr 98.810 98.611  test_mse 8.44010 6.68370  train_mse 2.46728 2.48910
+Epoch 10  test_dr 17.857 19.444  train_dr 99.008 98.611  test_mse 8.78984 6.81747  train_mse 2.44820 2.47467
+Epoch 11  test_dr 24.008 25.000  train_dr 100.000 99.802  test_mse 8.02641 6.62794  train_mse 2.41299 2.42559
+Epoch 12  test_dr 18.452 22.222  train_dr 100.000 100.000  test_mse 8.57446 6.72109  train_mse 2.37430 2.39700
+Epoch 13  test_dr 21.429 23.016  train_dr 100.000 100.000  test_mse 7.96488 6.70447  train_mse 2.37989 2.38647
+Epoch 14  test_dr 21.032 22.817  train_dr 100.000 100.000  test_mse 8.44009 6.79646  train_mse 2.35030 2.35173
+Epoch 15  test_dr 20.437 23.611  train_dr 100.000 100.000  test_mse 7.70393 6.63765  train_mse 2.36201 2.36082
+Epoch 16  test_dr 18.651 19.444  train_dr 100.000 100.000  test_mse 8.43329 6.77700  train_mse 2.34279 2.35455
+Epoch 17  test_dr 19.246 20.635  train_dr 99.802 99.802  test_mse 8.10026 6.73913  train_mse 2.36917 2.36642
+Epoch 18  test_dr 22.817 22.421  train_dr 98.810 99.603  test_mse 8.00730 6.77764  train_mse 2.39245 2.37818
+Epoch 19  test_dr 23.611 24.405  train_dr 99.802 100.000  test_mse 7.97565 6.69271  train_mse 2.37988 2.37716
+Epoch 20  test_dr 23.810 25.000  train_dr 100.000 100.000  test_mse 7.94760 6.73956  train_mse 2.34511 2.33831
+Epoch 21  test_dr 22.817 25.000  train_dr 100.000 100.000  test_mse 7.87455 6.72805  train_mse 2.32368 2.31245
+Epoch 22  test_dr 24.802 27.579  train_dr 100.000 100.000  test_mse 7.57925 6.67226  train_mse 2.22903 2.19513
+Epoch 23  test_dr 26.190 27.381  train_dr 100.000 100.000  test_mse 7.88069 6.81386  train_mse 2.19663 2.16557
+Epoch 24  test_dr 25.992 27.778  train_dr 100.000 100.000  test_mse 7.83108 6.83841  train_mse 2.18540 2.15817
+Epoch 25  test_dr 26.587 28.373  train_dr 100.000 100.000  test_mse 8.05676 6.91277  train_mse 2.17297 2.14846
+Epoch 26  test_dr 26.587 27.976  train_dr 100.000 100.000  test_mse 8.11476 6.94343  train_mse 2.16678 2.14548
+Epoch 27  test_dr 27.778 28.175  train_dr 100.000 100.000  test_mse 8.17951 6.97209  train_mse 2.16465 2.14185
+Epoch 28  test_dr 26.587 27.579  train_dr 100.000 100.000  test_mse 8.32974 7.01232  train_mse 2.15961 2.13879
+Epoch 29  test_dr 25.992 27.976  train_dr 100.000 100.000  test_mse 8.35306 7.02984  train_mse 2.15563 2.13581
+Epoch 30  test_dr 26.190 27.778  train_dr 100.000 100.000  test_mse 8.41798 7.05321  train_mse 2.15317 2.13258
+Done in 42.05 min
+
+
+With previous dataset:
+Epoch 0  test_dr 1.190 1.587  train_dr 0.794 1.786  test_mse 8.58449 8.58699  train_mse 8.58339 8.58699
+Epoch 1  test_dr 20.238 21.230  train_dr 25.397 24.008  test_mse 5.77071 6.96891  train_mse 5.26684 6.78637
+Epoch 2  test_dr 25.198 26.190  train_dr 42.659 43.452  test_mse 5.55583 6.39808  train_mse 4.45203 5.76784
+Epoch 3  test_dr 29.960 29.563  train_dr 56.151 55.357  test_mse 5.38262 5.89165  train_mse 3.91441 4.83047
+Epoch 4  test_dr 23.810 28.571  train_dr 75.595 78.175  test_mse 5.51789 5.62660  train_mse 3.34437 3.75144
+Epoch 5  test_dr 27.976 31.746  train_dr 86.508 87.698  test_mse 5.62593 5.40828  train_mse 2.95669 3.16326
+Epoch 6  test_dr 25.397 28.770  train_dr 92.063 93.056  test_mse 5.72002 5.39947  train_mse 2.81847 2.90192
+Epoch 7  test_dr 30.556 33.333  train_dr 96.627 96.429  test_mse 5.57267 5.31284  train_mse 2.66643 2.74409
+Epoch 8  test_dr 24.206 27.183  train_dr 97.024 97.222  test_mse 5.58448 5.31970  train_mse 2.63931 2.66480
+Epoch 9  test_dr 26.984 30.357  train_dr 98.016 98.413  test_mse 5.56159 5.35222  train_mse 2.59531 2.62589
+Epoch 10  test_dr 31.746 34.921  train_dr 98.413 98.413  test_mse 5.43656 5.26617  train_mse 2.55684 2.56991
+Epoch 11  test_dr 25.000 28.175  train_dr 98.214 98.611  test_mse 5.50493 5.30110  train_mse 2.51804 2.54019
+Epoch 12  test_dr 32.143 33.929  train_dr 97.817 98.016  test_mse 5.41113 5.25656  train_mse 2.48560 2.51027
+Epoch 13  test_dr 30.159 33.135  train_dr 98.413 99.008  test_mse 5.35670 5.17832  train_mse 2.50156 2.48805
+Epoch 14  test_dr 30.159 33.929  train_dr 99.008 99.206  test_mse 5.49997 5.39328  train_mse 2.47710 2.49480
+Epoch 15  test_dr 35.119 36.706  train_dr 99.405 99.405  test_mse 5.23011 5.14808  train_mse 2.45867 2.43283
+Epoch 16  test_dr 33.333 36.111  train_dr 99.405 99.405  test_mse 5.19852 5.13097  train_mse 2.41323 2.40032
+Epoch 17  test_dr 35.516 40.675  train_dr 99.405 99.206  test_mse 5.33108 5.20531  train_mse 2.41205 2.39239
+Epoch 18  test_dr 35.913 37.500  train_dr 99.603 99.802  test_mse 5.16602 5.07280  train_mse 2.42032 2.39535
+Epoch 19  test_dr 35.119 37.698  train_dr 98.810 98.810  test_mse 5.30285 5.19076  train_mse 2.44101 2.41812
+Epoch 20  test_dr 33.333 35.317  train_dr 99.206 99.405  test_mse 5.21775 5.12334  train_mse 2.41322 2.39281
+Epoch 21  test_dr 34.325 36.905  train_dr 98.413 99.206  test_mse 5.26423 5.16912  train_mse 2.43025 2.39190
+Epoch 22  test_dr 40.476 41.667  train_dr 99.405 99.603  test_mse 5.06599 5.04647  train_mse 2.28295 2.23024
+Epoch 23  test_dr 40.873 42.659  train_dr 99.603 99.603  test_mse 5.07594 5.07365  train_mse 2.25175 2.21078
+Epoch 24  test_dr 38.690 41.270  train_dr 99.603 99.603  test_mse 5.15917 5.15197  train_mse 2.21926 2.19208
+Epoch 25  test_dr 40.278 42.063  train_dr 99.603 99.802  test_mse 5.16171 5.16467  train_mse 2.19982 2.16822
+Epoch 26  test_dr 39.286 41.667  train_dr 99.603 99.802  test_mse 5.20631 5.19607  train_mse 2.20766 2.17323
+Epoch 27  test_dr 39.683 41.865  train_dr 99.603 99.802  test_mse 5.23698 5.20268  train_mse 2.19835 2.16799
+Epoch 28  test_dr 39.683 41.865  train_dr 99.603 99.802  test_mse 5.22817 5.22590  train_mse 2.19271 2.16235
+Epoch 29  test_dr 40.476 42.063  train_dr 99.603 100.000  test_mse 5.24963 5.24105  train_mse 2.18750 2.15805
+Epoch 30  test_dr 39.484 41.468  train_dr 99.603 99.802  test_mse 5.24779 5.24529  train_mse 2.18525 2.15739
+Done in 27.18 min
+
+
+
 1 bank: 21.875
 2 banks: 23.828
 3 banks: 24.609
