@@ -209,7 +209,7 @@
 			\label{orig_detrate}
 		\end{tabular}
 	\end{figure}
-	Let's consider radius of 10 normalized pixels for the analysis. We can observe that our part detector gives +6\% accuracy for left wrist (Fig. \ref{our_detrate}, plot 1) compared to the original part detector (Fig. \ref{orig_detrate}, plot 1). After applying the spatial model, our model (Fig. \ref{our_detrate}, plot 2) has \textbf{the same accuracy for left wrist and left shoulder} (compared to Fig. \ref{our_detrate}, plot 2). However, \textbf{our model has 3\% better accuracy for left elbow and for nose}. 
+	Let's consider radius of 10 normalized pixels for the analysis. We can observe that our part detector gives +6\% accuracy for left wrist (Fig. \ref{our_detrate}, plot 1) compared to the original part detector (Fig. \ref{orig_detrate}, plot 1). After applying the spatial model, our model (Fig. \ref{our_detrate}, plot 2) has \textbf{the same accuracy for left wrist and left shoulder} (compared to Fig. \ref{orig_detrate}, plot 2). However, \textbf{our model has 3\% better accuracy for left elbow and for nose}. 
 	
 	Interestingly, if we consider the accuracy with low radius, our model has much better accuracy for nose, while the original model has much better accuracy for left shoulder. In our opinion, the choice of the loss function and the way one models probabilities (element-wise sigmoid or softmax over a heat map) has the crucial role here.
 	

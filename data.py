@@ -91,7 +91,10 @@ if __name__ == '__main__':
     # scale-dependent spatial model.
     # However, it does not lead to improvements. So our recommendation is to set iclr_data_preparation = False.
     iclr_data_preparation = False
-    data_FLIC = loadmat('data_FLIC.mat')
+    meta_info_file = 'data_FLIC.mat'
+    images_dir = './images_FLIC/'
+
+    data_FLIC = loadmat(meta_info_file)
     data_FLIC = data_FLIC['examples'][0]
     joint_ids = ['lsho', 'lelb', 'lwri', 'rsho', 'relb', 'rwri', 'lhip', 'rhip', 'nose']  # , 'leye', 'reye',
     dict = {'lsho':   0, 'lelb': 1, 'lwri': 2, 'rsho': 3, 'relb': 4, 'rwri': 5, 'lhip': 6,
@@ -114,7 +117,6 @@ if __name__ == '__main__':
 
     # This part is for x_train and x_test
     orig_h, orig_w = 480, 720
-    mode_height = 127.0  # roughly mode of the distribution of ||rhip - rsho||_2
     x_train, x_test, y_train_hmap, y_test_hmap = [], [], [], []
     for x, x_name, hmaps, hmaps_name, index in zip([x_train, x_test], ['x_train_flic', 'x_test_flic'], [y_train_hmap, y_test_hmap],
                                                    ['y_train_flic', 'y_test_flic'], [train_index, test_index]):
@@ -122,13 +124,14 @@ if __name__ == '__main__':
             flic_coords = data_FLIC[i][2]
             flic_coords = flip_backward_poses(flic_coords)
 
-            img = imageio.imread('./images_FLIC/' + data_FLIC[i][3][0])
+            img = imageio.imread(images_dir + data_FLIC[i][3][0])
             # img = downsample_cube(img, 2, ignoredim=2)  # the third dim
             img = img.astype(np.float32)
             img = img / 255
 
             # if training set
             if 'train' in x_name and iclr_data_preparation:
+                mode_height = 127.0  # roughly mode of the distribution of ||rhip - rsho||_2
                 # center of torso
                 center = (flic_coords[:, dict['lsho']] + flic_coords[:, dict['rhip']] + flic_coords[:, dict['rsho']] +
                           flic_coords[:, dict['lhip']]) / 4
